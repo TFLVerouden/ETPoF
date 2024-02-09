@@ -1,3 +1,15 @@
+HW1/Data
+HW1/ETPoF_23_HW1.pdf
+HW2/Images
+HW2/ETPoF_23_HW2.pdf
+HW3/PTV
+HW3/ETPoF_23_HW3.pdf
+HW4/PIVimages
+HW4/ETPoF_23_HW4.pdf
+HW4/LDA-signal.csv
+
+.conda
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
