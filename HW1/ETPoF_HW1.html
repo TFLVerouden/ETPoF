@@ -7612,9 +7612,9 @@ a.anchor-link {
 <span class="n">std_nobub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">vmask</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s1">'Mean velocity (+- std) with bubbles = </span><span class="si">{</span><span class="n">mean_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">std_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+    <span class="sa">f</span><span class="s1">'Mean velocity (+- std) with bubbles = </span><span class="si">{</span><span class="n">mean_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">std_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> m/s'</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span>
-    <span class="sa">f</span><span class="s1">'                    without bubbles = </span><span class="si">{</span><span class="n">mean_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">std_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+    <span class="sa">f</span><span class="s1">'                    without bubbles = </span><span class="si">{</span><span class="n">mean_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">std_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> m/s'</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7627,8 +7627,8 @@ a.anchor-link {
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Mean velocity (+- std) with bubbles = 0.402 +- 0.116
-                    without bubbles = 0.399 +- 0.040
+<pre>Mean velocity (+- std) with bubbles = 0.402 +- 0.116 m/s
+                    without bubbles = 0.399 +- 0.040 m/s
 </pre>
 </div>
 </div>
@@ -7841,9 +7841,9 @@ a.anchor-link {
 
 <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">pcov</span><span class="p">))</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'A = </span><span class="si">{</span><span class="n">A</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1">    +- </span><span class="si">{</span><span class="n">errors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s1">.2g</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'B = </span><span class="si">{</span><span class="n">B</span><span class="si">:</span><span class="s1">.7g</span><span class="si">}</span><span class="s1">   +- </span><span class="si">{</span><span class="n">errors</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s1">.2g</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'C = </span><span class="si">{</span><span class="n">C</span><span class="si">:</span><span class="s1">.9g</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">errors</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s1">.2g</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'A = </span><span class="si">{</span><span class="n">A</span><span class="si">:</span><span class="s1">.6g</span><span class="si">}</span><span class="s1">    +- </span><span class="si">{</span><span class="n">errors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s1">.2g</span><span class="si">}</span><span class="s1"> 1/K'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'B = </span><span class="si">{</span><span class="n">B</span><span class="si">:</span><span class="s1">.7g</span><span class="si">}</span><span class="s1">   +- </span><span class="si">{</span><span class="n">errors</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s1">.2g</span><span class="si">}</span><span class="s1"> 1/(KΩ)'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'C = </span><span class="si">{</span><span class="n">C</span><span class="si">:</span><span class="s1">.9g</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">errors</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">:</span><span class="s1">.2g</span><span class="si">}</span><span class="s1"> 1/(KΩ^3)'</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7856,9 +7856,9 @@ a.anchor-link {
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>A = 0.000999597    +- 2.5e-05
-B = 0.0002427721   +- 4.3e-06
-C = 1.46812769e-07 +- 1.8e-08
+<pre>A = 0.000999597    +- 2.5e-05 1/K
+B = 0.0002427721   +- 4.3e-06 1/(KΩ)
+C = 1.46812769e-07 +- 1.8e-08 1/(KΩ^3)
 </pre>
 </div>
 </div>
@@ -8002,7 +8002,7 @@ C = 1.46812769e-07 +- 1.8e-08
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">residual</span><span class="p">))</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Average residual: </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">err</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Average residual: </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">err</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s1"> K'</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8015,7 +8015,7 @@ C = 1.46812769e-07 +- 1.8e-08
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Average residual: 0.08
+<pre>Average residual: 0.08 K
 </pre>
 </div>
 </div>
@@ -8417,8 +8417,8 @@ given below.</p>
 <span class="n">T_mean_bub</span><span class="p">,</span> <span class="n">T_std_bub</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">T_bub</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">T_bub</span><span class="p">)]</span>
 <span class="n">T_mean_nobub</span><span class="p">,</span> <span class="n">T_std_nobub</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">T_nobub</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">T_nobub</span><span class="p">)]</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Mean temperature (+- std) with bubbles: </span><span class="si">{</span><span class="n">T_mean_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">T_std_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span>
-      <span class="o">+</span> <span class="sa">f</span><span class="s1">'</span><span class="se">\n</span><span class="s1">                       without bubbles: </span><span class="si">{</span><span class="n">T_mean_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">T_std_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Mean temperature (+- std) with bubbles: </span><span class="si">{</span><span class="n">T_mean_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">T_std_bub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> K'</span>
+      <span class="o">+</span> <span class="sa">f</span><span class="s1">'</span><span class="se">\n</span><span class="s1">                       without bubbles: </span><span class="si">{</span><span class="n">T_mean_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> +- </span><span class="si">{</span><span class="n">T_std_nobub</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1"> K'</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8431,8 +8431,8 @@ given below.</p>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Mean temperature (+- std) with bubbles: 295.796 +- 0.032
-                       without bubbles: 295.810 +- 0.035
+<pre>Mean temperature (+- std) with bubbles: 295.796 +- 0.032 K
+                       without bubbles: 295.810 +- 0.035 K
 </pre>
 </div>
 </div>
