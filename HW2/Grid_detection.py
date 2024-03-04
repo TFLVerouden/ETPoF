@@ -12,77 +12,45 @@ import math
 img = cv2.imread('Images/Calibration_a/Distorted.png', 0)#[600:800, 400:500]
 imgc = cv2.imread('Images/Calibration_a/Distorted.png')
 ret,thresh1 = cv2.threshold(img,70,255,cv2.THRESH_BINARY)
-'''
-# Display image
-plt.imshow(img)
 
+#erode, dilate = open
+n = 3
+kernel = np.ones((n,n),np.uint8)
+opening = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
 
-#Set Parameters for SimpleBlobDetector
-blobParams = cv2.SimpleBlobDetector_Params()
+img2 = cv2.blur(opening, (5,5), 0)
+_,thresh = cv2.threshold(img2, 40, 255, cv2.THRESH_BINARY)
 
-# Filter by Area.
-blobParams.filterByArea = True
-blobParams.minArea = 10    # minArea may be adjusted to suit for your experiment
-blobParams.maxArea = 20000  # maxArea may be adjusted to suit for your experiment
-
-
-# Filter by Convexity
-blobParams.filterByConvexity = False
-#blobParams.minConvexity = 0.95
-
-#Create a detector with the parameters
-blobDetector = cv2.SimpleBlobDetector_create(blobParams)
-
-keypoints = blobDetector.detect(thresh1)
-
-im_with_keypoints = cv2.drawKeypoints(thresh1, keypoints, np.array([]), (0,255,0), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-plt.figure()
-plt.imshow(im_with_keypoints)
-plt.show()
-
-
-#edges = cv.Canny(img2,50,150,apertureSize = 3)
-rows = img.shape[0]
-circles = cv2.HoughCircles(cv2.blur(img, (5,5)), cv2.HOUGH_GRADIENT, 1, rows / 8,
-                           param1=140, param2=1,
-                           minRadius=1, maxRadius=30)
-img2 = np.copy(img)
-
-if circles is not None:
-    circles = np.uint16(np.around(circles))
-    for i in circles[0, :]:
-        center = (i[0], i[1])
-        # circle center
-        cv2.circle(img, center, 1, (0, 100, 100), 3)
-        # circle outline
-        radius = i[2]
-        cv2.circle(img, center, radius, (0, 255, 0), 3)
-plt.figure()
-plt.imshow(img)
-'''
-img2 = cv2.blur(img, (5,5))
-
-edges = cv2.Canny(img2,70,255)
+edges = cv2.Canny(thresh,70,255)
 
 plt.figure()
 plt.imshow(edges)
 
-rows = img.shape[0]
-circles = cv2.HoughCircles(cv2.blur(img, (5,5)), cv2.HOUGH_GRADIENT, 1, rows / 8,
-                           param1=140, param2=1,
-                           minRadius=3, maxRadius=14)
+plt.figure()
+plt.imshow(opening)
 
-if circles is not None:
-    circles = np.uint16(np.around(circles))
-    for i in circles[0, :]:
-        center = (i[0], i[1])
-        # circle center
-        cv2.circle(img, center, 1, (0, 100, 100), 3)
-        # circle outline
-        radius = i[2]
-        cv2.circle(img, center, radius, (255, 0, 0), 3)
+plt.figure()
+plt.imshow(img2[200:400, 200:400])
 
+plt.figure()
+plt.imshow(thresh)
+
+gray = cv2.imread('Images/Calibration_b/20201204-2x-100um.tif', 0)
+dst = cv2.cornerHarris(gray,10,3,0.04)
+dst1 = np.copy(dst)
+ret, dst = cv2.threshold(dst,0.1*dst.max(),255,0)
+dst = np.uint8(dst)
+ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
+_,thresh = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
+plt.imshow(dst1)
+print(centroids)
+'''
+plt.imshow(thresh)
+ret, corners = cv2.findChessboardCorners(thresh, (4,4), None)
+
+print(corners)
+'''
+'''
 plt.figure()
 plt.imshow(img)
 #img2 = cv2.blur(img, (5,5))
@@ -134,3 +102,4 @@ print( "total error: {}".format(mean_error/len(objpoints)) )
 
 
 #ipympl %matplotlib widget
+'''
