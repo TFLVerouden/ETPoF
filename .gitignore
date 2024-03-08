@@ -9,6 +9,7 @@ HW4/ETPoF_23_HW4.pdf
 HW4/LDA-signal.csv
 
 .conda/
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
