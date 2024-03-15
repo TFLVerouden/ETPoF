@@ -3,9 +3,9 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from scipy import spatial
+from tqdm import tqdm
 
-
-def read_image(file_path, roi=None):
+def read_image(file_path, roi=None, grayscale=True):
     """
     Read an image from a file and crop it to a region of interest (ROI).
 
@@ -13,13 +13,20 @@ def read_image(file_path, roi=None):
         file_path (str): The path to the image file.
         roi (list): A list of four integers [x1, x2, y1, y2], specifying the
             region of interest (default: None).
+        grayscale (bool): Whether to read the image in grayscale
+            (default: True).
 
     RETURNS:
         array: The cropped image.
     """
 
-    # Read the image
-    image = cv.imread(file_path, 0)
+    # If grayscale is specified, read the image in grayscale
+    if grayscale:
+        image = cv.imread(file_path, 0)
+
+    # If not, read the image in color
+    else:
+        image = cv.imread(file_path)
 
     # Crop the image to the region of interest
     if roi is not None:
@@ -28,7 +35,7 @@ def read_image(file_path, roi=None):
     return image
 
 
-def read_image_series(directory, prefix=None, roi=None):
+def read_image_series(directory, prefix=None, roi=None, grayscale=True):
     """
     Read a series of images from a directory and crop them to a region of
     interest (ROI).
@@ -40,7 +47,7 @@ def read_image_series(directory, prefix=None, roi=None):
             region of interest (default: None).
 
     RETURNS:
-        list: A list of cropped images.
+        tuple: A tuple containing a list of images and a list of file names.
     """
 
     # Get a list of all files in the directory
@@ -54,7 +61,8 @@ def read_image_series(directory, prefix=None, roi=None):
     files.sort()
 
     # Read the images and store them in a list
-    images = [read_image(os.path.join(directory, f), roi) for f in files]
+    images = [read_image(os.path.join(directory, f), roi, grayscale=grayscale)
+              for f in tqdm(files)]
 
     return images, files
 
