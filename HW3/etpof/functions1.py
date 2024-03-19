@@ -37,7 +37,8 @@ def read_image(file_path, roi=None, grayscale=True):
     return image
 
 
-def read_image_series(directory, prefix=None, roi=None, grayscale=True):
+def read_image_series(directory, prefix=None, roi=None, grayscale=True,
+                      timing=True):
     """
     Read a series of images from a directory and crop them to a region of
     interest (ROI).
@@ -48,6 +49,9 @@ def read_image_series(directory, prefix=None, roi=None, grayscale=True):
         roi (list): A list of four integers [x0, x1, z0, z1], specifying the
             region of interest (default: None).
         grayscale (bool): Whether to read the images in grayscale
+            (default: True).
+        timing (bool): Whether to print the time taken to read the images
+            (default: False).
 
     RETURNS:
         tuple: A tuple containing a list of images and a list of file names.
@@ -65,7 +69,7 @@ def read_image_series(directory, prefix=None, roi=None, grayscale=True):
 
     # Read the images and store them in a list
     images = [read_image(os.path.join(directory, f), roi, grayscale=grayscale)
-              for f in tqdm(files)]
+              for f in tqdm(files, disable=not timing, desc="Reading images")]
 
     return images, files
 
@@ -288,7 +292,7 @@ def calibrate_camera(image, calib_dist, threshold, peak_method='weighted_avg',
 def calibrate_cameras(directory, roi, calib_dist, threshold,
                       peak_method='weighted_avg',
                       file_prefix='Calibration',
-                      plot=None, verbose=False, units="mm", precision=3):
+                      plot=False, verbose=True, units="m", precision=7):
     """
     Calibrate the resolution of a series of cameras using calibration images.
 
@@ -303,17 +307,17 @@ def calibrate_cameras(directory, roi, calib_dist, threshold,
             (default: 'weighted_avg').
         file_prefix (str): A common prefix for the image files
             (default: 'Calibration').
-        plot (list(bool)): Which camera's results to plot (default: None).
-        verbose (bool): Whether to print the results (default: False).
-        precision (int): In the verbose output, the number of decimal places to
-            round the results to (default: 5).
+        plot (list(bool)): Which camera's results to plot (default: False).
+        verbose (bool): Whether to print the results (default: True).
         units (str): In the verbose output, the length units of the values
-            (default: "mm").
+            (default: "m").
+        precision (int): In the verbose output, the number of decimal places to
+            round the results to (default: 7).
     """
 
     # Read the calibration images in grayscale [z, x]
-    calib_images, files = read_image_series(directory,
-                                            prefix=file_prefix, roi=roi)
+    calib_images, files = read_image_series(directory, prefix=file_prefix,
+                                            roi=roi, timing=False)
     no_images = len(calib_images)
 
     # Generate an array of plot flags
@@ -333,7 +337,8 @@ def calibrate_cameras(directory, roi, calib_dist, threshold,
     # For each calibration image...
     for idx, calib_image in enumerate(calib_images):
         # Print the camera name
-        print(f"==> {files[idx]}:")
+        if verbose:
+            print(f"==> {files[idx]}:")
 
         # Get the average resolution and standard deviation
         res_avg[idx], res_std[idx], line_height_idx \
@@ -357,6 +362,6 @@ def calibrate_cameras(directory, roi, calib_dist, threshold,
 
             # Print the offset
             if verbose:
-                print(f"Offset: {offset[idx]:.{precision}f} {units}")
+                print(f"The offfset is {offset[idx]:.{precision}f} {units}.")
 
     return res_avg, res_std, offset
