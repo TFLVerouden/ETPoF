@@ -6,6 +6,7 @@ from scipy.optimize import curve_fit
 from tqdm import tqdm
 from tqdm import trange
 from HW3.etpof import all_distances
+from HW3.etpof import read_image_series
 
 
 # Todo: detect extra random print statements
@@ -604,7 +605,7 @@ def analyze_camera(directory, prefix, res, min_cnt_area=1, min_intensity=100,
         coo_err_img = coo_err_img * res
 
         # Horizontally stack the image number with the coords
-        img_no_arr = np.ones((len(coo_img), 1)) * img_no
+        img_no_arr = np.ones((len(coo_img), 1)) * (img_no + 1)
         coo_img = np.hstack((coo_img, img_no_arr))
         coo_err_img = np.hstack((coo_err_img, img_no_arr))
         int_img = np.hstack((int_img, img_no_arr))
