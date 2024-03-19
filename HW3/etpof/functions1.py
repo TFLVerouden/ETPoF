@@ -283,7 +283,8 @@ def calibrate_camera(image, calib_dist, threshold, peak_method='weighted_avg',
         ax2.set_ylim([len(int_profile) * res_avg / 1000, 0])
 
         # Add legend
-        ax[1].legend(['Mean intensity', 'Avg. peaks', 'Threshold'])
+        ax[1].legend(['Mean intensity', 'Avg. peaks', 'Threshold'],
+                     loc='upper left')
         plt.show()
 
     return res_avg, res_std, line_height
