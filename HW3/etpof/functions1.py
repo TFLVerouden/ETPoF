@@ -13,7 +13,7 @@ def read_image(file_path, roi=None, grayscale=True):
 
     PARAMETERS:
         file_path (str): The path to the image file.
-        roi (list): A list of four integers [x1, x2, y1, y2], specifying the
+        roi (list): A list of four integers [x0, x1, z0, z1], specifying the
             region of interest (default: None).
         grayscale (bool): Whether to read the image in grayscale
             (default: True).
@@ -45,8 +45,9 @@ def read_image_series(directory, prefix=None, roi=None, grayscale=True):
     PARAMETERS:
         directory (str): The path to the directory containing the images.
         prefix (str): A common prefix for the image files (default: None).
-        roi (list): A list of four integers [x1, x2, z1, z2], specifying the
+        roi (list): A list of four integers [x0, x1, z0, z1], specifying the
             region of interest (default: None).
+        grayscale (bool): Whether to read the images in grayscale
 
     RETURNS:
         tuple: A tuple containing a list of images and a list of file names.
@@ -105,9 +106,10 @@ def weighted_avg_and_std(values, weights, mask_diagonal=True,
         mask_diagonal (bool): Whether to mask the diagonal of the
             distance matrix (default: True).
         verbose (bool): Whether to print the results (default: False).
-        precision (int): The number of decimal places to round the results
-            to (default: 5).
-        units (str): The units of the values (default: "mm").
+        precision (int): In the verbose output, the number of decimal places to
+            round the results to (default: 5).
+        units (str): In the verbose output, the length units of the values
+            (default: "mm").
 
     RETURNS:
         tuple: A tuple containing the weighted average and standard deviation.
@@ -129,7 +131,7 @@ def weighted_avg_and_std(values, weights, mask_diagonal=True,
     if verbose:
         print(f"The average resolution is {average:.{precision}f} {units}/px,")
         print(f"with a standard deviation of {np.sqrt(variance):.{precision}f}"
-              f" {units}/px ({100 * deviation / average:.{precision - 2}} %).")
+              f" {units}/px ({100 * deviation / average:.2} %).")
 
     # Output the average and standard deviation
     return average, deviation
@@ -191,8 +193,9 @@ def intensity_peaks(profile, method='weighted_avg', threshold=85):
     return peak_indices, peak_intensities
 
 
-def calibrate_camera(image, calib_dist, threshold, units="mm", plot=False,
-                     verbose=False, precision=3, file_name=None):
+def calibrate_camera(image, calib_dist, threshold, peak_method='weighted_avg',
+                     plot=False, file_name=None, verbose=False, units="mm",
+                     precision=3):
     """
     Calibrate the resolution of a camera using a calibration image.
 
@@ -200,23 +203,27 @@ def calibrate_camera(image, calib_dist, threshold, units="mm", plot=False,
         image (array-like): The calibration image.
         calib_dist (float): The known distance between the peaks in the image.
         threshold (float): The threshold for peak detection.
-        units (str): The units of the resolution (default: "mm/px").
+        peak_method (str): The method to use for peak detection
         plot (bool): Whether to plot the results (default: False).
+        file_name (str): When plotting, the name of the file to use as
+            the figure title
         verbose (bool): Whether to print the results (default: False).
-        precision (int): The number of decimal places to round the results to
-            (default: 3).
-        file_name (str): The name of the file to use as the figure title
+        precision (int): In the verbose output, the number of decimal places to
+            round the results to (default: 5).
+        units (str): In the verbose output, the length units of the values
+            (default: "mm").
 
     RETURNS:
-        tuple: A tuple containing the average resolution and standard deviation.
+        tuple: A tuple containing the average resolution, standard deviation,
+            and the line heights.
     """
 
     # Average all pixels in the x-direction to get the intensity profile
     int_profile = np.mean(image, axis=1)
 
     # Calculate the peaks in the intensity profile
-    line_height, peak_intensities = intensity_peaks(int_profile,
-                                                    threshold=threshold)
+    line_height, peak_intensities\
+        = intensity_peaks(int_profile, method=peak_method, threshold=threshold)
     # Idea: the peak intensities could be used as a measure of error
 
     # Calculate the distances between all peaks
@@ -279,58 +286,77 @@ def calibrate_camera(image, calib_dist, threshold, units="mm", plot=False,
 
 
 def calibrate_cameras(directory, roi, calib_dist, threshold,
-                      file_prefix='Calibration', units="mm",
-                      precision=3, plot=None, verbose=False):
+                      peak_method='weighted_avg',
+                      file_prefix='Calibration',
+                      plot=None, verbose=False, units="mm", precision=3):
     """
+    Calibrate the resolution of a series of cameras using calibration images.
 
+    PARAMETERS:
+        directory (str): The path to the directory containing the calibration
+            images.
+        roi (list): A list of four integers [x0, x1, z0, z1], specifying the
+            region of interest.
+        calib_dist (float): The known distance between the peaks in the image.
+        threshold (float): The threshold for peak detection.
+        peak_method (str): The method to use for peak detection
+            (default: 'weighted_avg').
+        file_prefix (str): A common prefix for the image files
+            (default: 'Calibration').
+        plot (list(bool)): Which camera's results to plot (default: None).
+        verbose (bool): Whether to print the results (default: False).
+        precision (int): In the verbose output, the number of decimal places to
+            round the results to (default: 5).
+        units (str): In the verbose output, the length units of the values
+            (default: "mm").
     """
 
     # Read the calibration images in grayscale [z, x]
-    calib_imgs, files = read_image_series(directory,
-                                          prefix=file_prefix, roi=roi)
-    no_imgs = len(calib_imgs)
+    calib_images, files = read_image_series(directory,
+                                            prefix=file_prefix, roi=roi)
+    no_images = len(calib_images)
 
     # Generate an array of plot flags
     if plot is True:
-        plot = np.ones(no_imgs, dtype=bool)
+        plot = np.ones(no_images, dtype=bool)
     elif plot is False:
-        plot = np.zeros(no_imgs, dtype=bool)
+        plot = np.zeros(no_images, dtype=bool)
     elif isinstance(plot, (list, tuple, np.ndarray)):
         plot = np.array(plot, dtype=bool)
     else:
         raise ValueError("Invalid value for 'plot'")
 
     # Pre-allocate
-    res_avg, res_std, offset = (np.zeros(no_imgs), np.zeros(no_imgs), 
-                                np.zeros(no_imgs))
+    res_avg, res_std, offset = (np.zeros(no_images), np.zeros(no_images),
+                                np.zeros(no_images))
 
     # For each calibration image...
-    for idx, calib_image in enumerate(calib_imgs):
+    for idx, calib_image in enumerate(calib_images):
         # Print the camera name
         print(f"==> {files[idx]}:")
 
         # Get the average resolution and standard deviation
         res_avg[idx], res_std[idx], line_height_idx \
-            = calibrate_camera(calib_image, calib_dist, threshold, units=units,
-                               precision=precision, plot=plot[idx],
-                               verbose=verbose, file_name=files[idx])
+            = calibrate_camera(calib_image, calib_dist, threshold,
+                               peak_method=peak_method,
+                               plot=bool(plot[idx]), file_name=files[idx],
+                               verbose=verbose, units=units,
+                               precision=precision)
 
         # Store the line heights of the first camera
         if idx == 0:
             line_height_0 = line_height_idx
             offset[0] = 0
-        
+
         # If this is not the first camera, compare the line locations
         else:
             line_diff = np.array(line_height_idx) - np.array(line_height_0)
-            
+
             # The offset is given by the mean of the differences
             offset[idx] = res_avg[idx] * np.mean(line_diff)
 
             # Print the offset
             if verbose:
                 print(f"Offset: {offset[idx]:.{precision}f} {units}")
-    # Compare the resolutions of the different calibration images
-    # TODO: Figure out how to compare the resolutions of the different images
 
     return res_avg, res_std, offset
