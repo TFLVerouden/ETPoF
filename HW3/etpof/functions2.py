@@ -4,7 +4,7 @@ import numpy as np
 from scipy import ndimage
 from scipy.optimize import curve_fit
 
-from functions1 import all_distances, read_image_series
+from . import all_distances, read_image_series
 
 
 def remove_hits(img, mode):
