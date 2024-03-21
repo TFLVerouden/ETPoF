@@ -1,6 +1,183 @@
 import numpy as np
 from tqdm import tqdm
 
+def PTV_2DMiddle(x, z, middle_frame, n_velocity=4, Rmax_v=3, Rmax_n=3, nN=200):
+    # starting points, take points on the last frame, where particles are nicely separated:
+    mask0 = (x[:,1] == middle_frame)
+    x00 = x[:,0][mask0]
+    z00 = z[:,0][mask0]
+    
+    path_x_back = np.zeros((1,3))
+    path_z_back = np.zeros((1,3))
+    
+    #first, go backwards (aka, reverse)
+    for i in (range(len(x00))):
+        #save first coordinate
+        path_x_back = np.vstack((path_x_back, np.array([x00[i], middle_frame, i])))
+        path_z_back = np.vstack((path_z_back, np.array([z00[i], middle_frame, i])))
+
+        nearest = 0
+        for j in reversed(range(1, middle_frame)):
+            
+            # use nearest neighbour for first couple of points
+            if nearest <= n_velocity+1:
+                # find points on next frame
+                mask0 = (x[:,1] == j)
+                x001 = x[:,0][mask0]
+                z001 = z[:,0][mask0]
+        
+                #first find closest point to previous position on camera:
+                distance = np.sqrt(abs(z001-path_z_back[-1,0])**2 + abs(x001-path_x_back[-1,0])**2)
+                index = np.argmin(distance)
+                
+                if distance[index] < Rmax_n*abs(path_z_back[-1,1]-j):
+                    path_x_back = np.vstack((path_x_back, np.array([x001[index], j, i])))
+                    path_z_back = np.vstack((path_z_back, np.array([z001[index], j, i])))
+                
+                #path_x = np.vstack((path_x, np.array([x001[index], j, i])))
+                #path_z = np.vstack((path_z, np.array([z001[index], j, i])))
+                
+                nearest += 1
+            else:
+                R = 1
+                vz = (path_z_back[-1-n_velocity, 0] - path_z_back[-1, 0])/(path_z_back[-1-n_velocity, 1] - path_z_back[-1, 1]) #averaged over n-1 frames
+                vx = (path_x_back[-1-n_velocity, 0] - path_x_back[-1, 0])/(path_x_back[-1-n_velocity, 1] - path_x_back[-1, 1]) #averaged over n-1 frames
+                
+                #calculate search neighbourhood
+                neighbourhood_z = path_z_back[-1,0] + vz
+                neighbourhood_x = path_x_back[-1,0] + vx
+                
+                # find points on next frame within neighbourhood
+                while True:
+                    mask0 = (x[:,1] == j) &  (x[:,0] < (neighbourhood_x + R)) & (x[:,0] > (neighbourhood_x - R)) & (z[:,0] < (neighbourhood_z + R)) & (z[:,0] > (neighbourhood_z - R))
+                    x001 = x[:,0][mask0]
+                    z001 = z[:,0][mask0]
+                    
+                    if R > Rmax_n: #use nearest neighbour instead
+                        # find points on next frame
+                        mask0 = (x[:,1] == j)
+                        x001 = x[:,0][mask0]
+                        z001 = z[:,0][mask0]
+                
+                        #first find closest point to previous position on camera:
+                        distance = np.sqrt(abs(z001-path_z_back[-1,0])**2 + abs(x001-path_x_back[-1,0])**2)
+                        index = np.argmin(distance)
+                        
+                        #this works for some, not others >:[
+                        if distance[index] < Rmax_v*abs(path_z_back[-1,1]-j):
+                            path_x_back = np.vstack((path_x_back, np.array([x001[index], j, i])))
+                            path_z_back = np.vstack((path_z_back, np.array([z001[index], j, i])))
+                        
+                        break
+                    
+                    if len(x001) >= 1:
+                        #first find closest point to previous position on camera A:
+                        distance = np.sqrt(abs(z001-neighbourhood_z)**2 + abs(x001-neighbourhood_x)**2)
+                        index = np.argmin(distance)
+                        
+                        #if distance[index] < 4*abs(path_z[-1,1]-j):
+                        
+                        path_x_back = np.vstack((path_x_back, np.array([x001[index], j, i])))
+                        path_z_back = np.vstack((path_z_back, np.array([z001[index], j, i])))
+                        break
+                    R += 1
+    path_x_forw = np.zeros((1,3))
+    path_z_forw = np.zeros((1,3))
+    
+    #second, go forwards
+    for i in (range(len(x00))):
+        #save first coordinate
+        path_x_forw = np.vstack((path_x_forw, np.array([x00[i], middle_frame, i])))
+        path_z_forw = np.vstack((path_z_forw, np.array([z00[i], middle_frame, i])))
+
+        nearest = 0
+        for j in (range(middle_frame, nN+1)):
+            
+            # use nearest neighbour for first couple of points
+            if nearest <= n_velocity+1:
+                # find points on next frame
+                mask0 = (x[:,1] == j)
+                x001 = x[:,0][mask0]
+                z001 = z[:,0][mask0]
+        
+                #first find closest point to previous position on camera:
+                distance = np.sqrt(abs(z001-path_z_forw[-1,0])**2 + abs(x001-path_x_forw[-1,0])**2)
+                index = np.argmin(distance)
+                
+                if distance[index] < Rmax_n*abs(path_z_forw[-1,1]-j):
+                    path_x_forw = np.vstack((path_x_forw, np.array([x001[index], j, i])))
+                    path_z_forw = np.vstack((path_z_forw, np.array([z001[index], j, i])))
+                
+                #path_x = np.vstack((path_x, np.array([x001[index], j, i])))
+                #path_z = np.vstack((path_z, np.array([z001[index], j, i])))
+                
+                nearest += 1
+            else:
+                R = 1
+                vz = (path_z_forw[-1-n_velocity, 0] - path_z_forw[-1, 0])/(path_z_forw[-1-n_velocity, 1] - path_z_forw[-1, 1]) #averaged over n-1 frames
+                vx = (path_x_forw[-1-n_velocity, 0] - path_x_forw[-1, 0])/(path_x_forw[-1-n_velocity, 1] - path_x_forw[-1, 1]) #averaged over n-1 frames
+                
+                #calculate search neighbourhood
+                neighbourhood_z = path_z_forw[-1,0] + vz
+                neighbourhood_x = path_x_forw[-1,0] + vx
+                
+                # find points on next frame within neighbourhood
+                while True:
+                    mask0 = (x[:,1] == j) &  (x[:,0] < (neighbourhood_x + R)) & (x[:,0] > (neighbourhood_x - R)) & (z[:,0] < (neighbourhood_z + R)) & (z[:,0] > (neighbourhood_z - R))
+                    x001 = x[:,0][mask0]
+                    z001 = z[:,0][mask0]
+                    
+                    if R > Rmax_n: #use nearest neighbour instead
+                        # find points on next frame
+                        mask0 = (x[:,1] == j)
+                        x001 = x[:,0][mask0]
+                        z001 = z[:,0][mask0]
+                
+                        #first find closest point to previous position on camera:
+                        distance = np.sqrt(abs(z001-path_z_forw[-1,0])**2 + abs(x001-path_x_forw[-1,0])**2)
+                        index = np.argmin(distance)
+                        
+                        #this works for some, not others >:[
+                        if distance[index] < Rmax_v*abs(path_z_forw[-1,1]-j):
+                            path_x_forw = np.vstack((path_x_forw, np.array([x001[index], j, i])))
+                            path_z_forw = np.vstack((path_z_forw, np.array([z001[index], j, i])))
+                        
+                        break
+                    
+                    if len(x001) >= 1:
+                        #first find closest point to previous position on camera A:
+                        distance = np.sqrt(abs(z001-neighbourhood_z)**2 + abs(x001-neighbourhood_x)**2)
+                        index = np.argmin(distance)
+                        
+                        #if distance[index] < 4*abs(path_z[-1,1]-j):
+                        
+                        path_x_forw = np.vstack((path_x_forw, np.array([x001[index], j, i])))
+                        path_z_forw = np.vstack((path_z_forw, np.array([z001[index], j, i])))
+                        break
+                    R += 1
+    #merge the two arrays
+    #particle numbers should be the same
+    
+    path_x = np.zeros((1,3))
+    path_z = np.zeros((1,3))
+    
+    for i in range(len(x00)):
+        for j in range(1, nN+1):
+            mask_forw = (path_x_forw[:,2] == i) & (path_x_forw[:,1] == j)
+            p1x = path_x_forw[mask_forw]
+            p1z = path_z_forw[mask_forw]
+            mask_back = (path_x_back[:,2] == i) & (path_x_back[:,1] == j)
+            p2x = path_x_back[mask_back]
+            p2z = path_z_back[mask_back]
+            
+            path_x = np.vstack((path_x, p2x))
+            path_x = np.vstack((path_x, p1x))
+            
+            path_z = np.vstack((path_z, p2z))
+            path_z = np.vstack((path_z, p1z))
+    
+    return path_x[1:,:], path_z[1:,:]
+
 
 def leftovers(x3d, y3d, z3d, xA, zA, yB, zB):
     #delete used data points
