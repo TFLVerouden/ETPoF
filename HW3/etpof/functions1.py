@@ -38,7 +38,7 @@ def read_image(file_path, roi=None, grayscale=True):
 
 
 def read_image_series(directory, prefix=None, roi=None, grayscale=True,
-                      timing=True):
+                      timeit=True):
     """
     Read a series of images from a directory and crop them to a region of
     interest (ROI).
@@ -50,7 +50,7 @@ def read_image_series(directory, prefix=None, roi=None, grayscale=True,
             region of interest (default: None).
         grayscale (bool): Whether to read the images in grayscale
             (default: True).
-        timing (bool): Whether to print the time taken to read the images
+        timeit (bool): Whether to print the time taken to read the images
             (default: False).
 
     RETURNS:
@@ -69,7 +69,7 @@ def read_image_series(directory, prefix=None, roi=None, grayscale=True,
 
     # Read the images and store them in a list
     images = [read_image(os.path.join(directory, f), roi, grayscale=grayscale)
-              for f in tqdm(files, disable=not timing, desc="Reading images")]
+              for f in tqdm(files, disable=not timeit, desc="Reading images")]
 
     return images, files
 
@@ -318,7 +318,7 @@ def calibrate_cameras(directory, roi, calib_dist, threshold,
 
     # Read the calibration images in grayscale [z, x]
     calib_images, files = read_image_series(directory, prefix=file_prefix,
-                                            roi=roi, timing=False)
+                                            roi=roi, timeit=False)
     no_images = len(calib_images)
 
     # Generate an array of plot flags

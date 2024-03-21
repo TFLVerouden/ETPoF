@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 from scipy.optimize import curve_fit
+from tqdm import tqdm
 
 from . import all_distances, read_image_series
 
@@ -746,7 +747,7 @@ def analyze_image(img, min_contour_area=1, min_intensity=100, neighbor_dist=2.5,
 def analyze_camera(directory, prefix, resolution, offset, min_contour_area=1,
                    min_intensity=100, neighbor_dist=2.5, box_margin=2,
                    max_iter=3, plot_all=False, plot_image=False,
-                   plot_particles=True, verbose=False,
+                   plot_particles=True, verbose=False, timeit=True,
                    bg_sigma_color1=50, bg_sigma_space1=9,
                    bg_sigma_color2=20, bg_sigma_space2=3,
                    bg_noise_threshold=50):
@@ -776,6 +777,7 @@ def analyze_camera(directory, prefix, resolution, offset, min_contour_area=1,
             each image (default: True).
         verbose (bool): Whether to print out the number of particles found in
             each image (default: False).
+        timeit (bool): Whether to time the function (default: True).
         bg_sigma_color1 (int): The color sigma of the first bilateral filter
             (default: 50).
         bg_sigma_space1 (int): The space sigma of the first bilateral filter
@@ -799,7 +801,8 @@ def analyze_camera(directory, prefix, resolution, offset, min_contour_area=1,
     particles_found = np.empty(len(images), dtype=int)
 
     # Loop over the images
-    for img_no, img in enumerate(images):
+    for img_no, img in enumerate(tqdm(images, desc='Processing images',
+                                      disable=not timeit)):
         # Analyze the image
         coo_img, int_img, coo_err_img, int_err_img \
             = analyze_image(img, min_contour_area=min_contour_area,
