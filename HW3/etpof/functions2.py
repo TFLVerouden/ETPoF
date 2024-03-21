@@ -514,8 +514,8 @@ def find_particle_center(img, contours, contour_no, min_intensity=100,
         fig, ax = plt.subplots()
         ax.imshow(img_isol, cmap='gray')
         ax.invert_yaxis()
-        ax.set_xlim(box_x - box_margin - 0.5, box_x + box_w + box_margin + 0.5)
-        ax.set_ylim(box_z + box_h + box_margin + 0.5, box_z - box_margin - 0.5)
+        ax.set_xlim(box_x0 - 0.5, box_x1 + 0.5)
+        ax.set_ylim(box_z1 + 0.5, box_z0 - 0.5)
         ax.set_xlabel('x [px]')
         ax.set_ylabel('z [px]')
 
