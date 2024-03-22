@@ -1,6 +1,82 @@
 import numpy as np
 from tqdm import tqdm
 
+
+def remove_duplicate_tracks(x1, y1, z1):
+    '''
+    Takes out duplicate tracks in same run
+    '''
+    print('remove duplicate tracks')
+    x2 = x1
+    y2 = y1
+    z2 = z1
+    indexes = np.zeros(0)
+    #remove duplicate coordinates
+    for j in tqdm(range(0, len(x1))):
+        #take particle position and frame number
+        x = x1[j,:2]
+        y = y1[j,:2]
+        z = z1[j,:2]
+        p = x1[j, 2] #particle number
+        
+        #loop through new paths
+        for i in range(0, len(x2)):
+            xn = x2[i,:2]
+            yn = y2[i,:2]
+            zn = z2[i,:2]
+            pn = x2[j, 2] #particle number
+            
+            if (xn == x).all() and (yn == y).all() and (zn == z).all() and pn != p:
+                indexes = np.append(indexes, int(i))
+        
+    x2 = np.delete(x2, indexes.astype(int), 0)
+    y2 = np.delete(y2, indexes.astype(int), 0)
+    z2 = np.delete(z2, indexes.astype(int), 0)
+    
+    
+    return x2, y2, z2
+
+def remove_shorties(x, y, z, n=100):
+    print('remove shorties')
+    xnew = np.zeros((1,3))
+    ynew = np.zeros((1,3))
+    znew = np.zeros((1,3))
+    
+    for i in range(0, int(np.argmax(x[:,2])+1)):
+        mask = (x[:,2] == i)
+        if len(x[mask]) >=n:
+            xnew = np.vstack((xnew, x[mask]))
+            ynew = np.vstack((ynew, y[mask]))
+            znew = np.vstack((znew, z[mask]))
+    
+    return xnew[1:,:], ynew[1:,:], znew[1:,:]
+
+
+def remove_duplicates(x1, y1, z1, x2, y2, z2):
+    print('remove duplicates (diff)')
+    indexes = np.zeros(0)
+    #remove duplicate coordinates
+    for j in tqdm(range(0, len(x1))):
+        #take particle position and frame number
+        x = x1[j,:2]
+        y = y1[j,:2]
+        z = z1[j,:2]
+        
+        #loop through new paths
+        for i in range(0, len(x2)):
+            xn = x2[i,:2]
+            yn = y2[i,:2]
+            zn = z2[i,:2]
+            
+            if (xn == x).all() and (yn == y).all() and (zn == z).all():
+                indexes = np.append(indexes, int(i))
+                
+    x2 = np.delete(x2, indexes.astype(int), 0)
+    y2 = np.delete(y2, indexes.astype(int), 0)
+    z2 = np.delete(z2, indexes.astype(int), 0)
+    
+    return x2, y2, z2
+
 def PTV_2DMiddle(x, z, middle_frame, n_velocity=4, Rmax_v=3, Rmax_n=3, nN=200):
     # starting points, take points on the last frame, where particles are nicely separated:
     mask0 = (x[:,1] == middle_frame)
@@ -179,55 +255,37 @@ def PTV_2DMiddle(x, z, middle_frame, n_velocity=4, Rmax_v=3, Rmax_n=3, nN=200):
     return path_x[1:,:], path_z[1:,:]
 
 
-def leftovers(x3d, y3d, z3d, xA, zA, yB, zB):
-    #delete used data points
-    for i in range(len(x3d)):
-        coord = x3d[i,:2]
-        between_variable = np.where(xA == coord)[0]
-        if len(between_variable)!=0:
-            del_i = between_variable[0]
-            xA = np.delete(xA,del_i,0)
-            zA = np.delete(zA,del_i,0)
-
-    #delete used data points
-    for i in range(len(y3d)):
-        coord = y3d[i,:2]
-        between_variable = np.where(yB == coord)[0]
-        if len(between_variable)!=0:
-            del_i = between_variable[0]
-            yB = np.delete(yB,del_i,0)
-            zB = np.delete(zB,del_i,0)
-    return xA, zA, yB, zB
-
 def removal(x3d_1, y3d_1, z3d_1, Rmax=0.1):
+    print('removal')
     x1 = np.zeros((1,3))
     y1 = np.zeros((1,3))
     z1 = np.zeros((1,3))
     p=-1
     for i in range(0, int(np.max(x3d_1[:,2]))+1):
-        p+=1
-        x = x3d_1[x3d_1[:,2]==i]
-        y = y3d_1[y3d_1[:,2]==i]
-        z = z3d_1[z3d_1[:,2]==i]
-        
-        #save first coordinate
-        x1 = np.vstack((x1, np.array([x[0, 0], x[0, 1], p])))
-        z1 = np.vstack((z1, np.array([z[0, 0], z[0, 1], p])))
-        y1 = np.vstack((y1, np.array([y[0, 0], y[0, 1], p])))
-        
-        for j in range(1, len(x)):
-            dx = x[j, 0] - x[j-1, 0]
-            dy = y[j, 0] - y[j-1, 0]
-            dz = z[j, 0] - z[j-1, 0]
+        if i in x3d_1[:,2]:
+            p+=1
+            x = x3d_1[x3d_1[:,2]==i]
+            y = y3d_1[y3d_1[:,2]==i]
+            z = z3d_1[z3d_1[:,2]==i]
             
-            R = np.sqrt(abs(dx**2) + abs(dz**2) + abs(dy**2)) #+ abs(dy**2)
-            if R > Rmax:
-                p = p+1
-            #save coordinate
-            x1 = np.vstack((x1, np.array([x[j, 0], x[j, 1], p])))
-            y1 = np.vstack((y1, np.array([y[j, 0], y[j, 1], p])))
-            z1 = np.vstack((z1, np.array([z[j, 0], z[j, 1], p])))
+            #save first coordinate
+            x1 = np.vstack((x1, np.array([x[0, 0], x[0, 1], p])))
+            z1 = np.vstack((z1, np.array([z[0, 0], z[0, 1], p])))
+            y1 = np.vstack((y1, np.array([y[0, 0], y[0, 1], p])))
             
+            for j in range(1, len(x)):
+                dx = x[j, 0] - x[j-1, 0]
+                dy = y[j, 0] - y[j-1, 0]
+                dz = z[j, 0] - z[j-1, 0]
+                dt = abs(z[j, 1] - z[j-1, 1])
+                R = np.sqrt(abs(dx**2) + abs(dz**2) + abs(dy**2)) #+ abs(dy**2)
+                if R > Rmax or dt > 1:
+                    p = p+1
+                #save coordinate
+                x1 = np.vstack((x1, np.array([x[j, 0], x[j, 1], p])))
+                y1 = np.vstack((y1, np.array([y[j, 0], y[j, 1], p])))
+                z1 = np.vstack((z1, np.array([z[j, 0], z[j, 1], p])))
+                
     x1 = x1[1:,:]
     y1 = y1[1:,:]
     z1 = z1[1:,:]
@@ -671,18 +729,19 @@ def PTV_3D_Final(x, z1, y, z2, middle_frame, n_vel=4, R=1, Rz=1, Rv=1, nN=200):
             p1x = path_x_forw[mask_forw]
             p1y = path_y_forw[mask_forw]
             p1z = path_z1_forw[mask_forw]
-            mask_back = (path_x_back[:,2] == i) & (path_x_back[:,1] == j)
-            p2x = path_x_back[mask_back]
-            p2y = path_y_back[mask_back]
-            p2z = path_z1_back[mask_back]
+            if j != middle_frame:
+                mask_back = (path_x_back[:,2] == i) & (path_x_back[:,1] == j)
+                p2x = path_x_back[mask_back]
+                p2y = path_y_back[mask_back]
+                p2z = path_z1_back[mask_back]
+                path_x = np.vstack((path_x, p2x))
+                path_y = np.vstack((path_y, p2y))
+                path_z = np.vstack((path_z, p2z))
             
-            path_x = np.vstack((path_x, p2x))
             path_x = np.vstack((path_x, p1x))
             
-            path_y = np.vstack((path_y, p2y))
             path_y = np.vstack((path_y, p1y))
             
-            path_z = np.vstack((path_z, p2z))
             path_z = np.vstack((path_z, p1z))
     
     return path_x[1:,:], path_y[1:,:], path_z[1:,:]
@@ -1150,4 +1209,24 @@ def PTV_3D_Final_back(x, z1, y, z2, middle_frame, n_vel=4, R=1, Rz=1, Rv=1, nN=2
     #path_z = np.zeros((1,3))
     
     
-    return path_x_forw[1:,:], path_y_forw[1:,:], path_z1_forw[1:,:]
+    return np.flipud(path_x_forw[1:,:]), np.flipud(path_y_forw[1:,:]), np.flipud(path_z1_forw[1:,:])
+
+def leftovers(x3d, y3d, z3d, xA, zA, yB, zB):
+    #delete used data points
+    for i in range(len(x3d)):
+        coord = x3d[i,:2]
+        between_variable = np.where(xA == coord)[0]
+        if len(between_variable)!=0:
+            del_i = between_variable[0]
+            xA = np.delete(xA,del_i,0)
+            zA = np.delete(zA,del_i,0)
+
+    #delete used data points
+    for i in range(len(y3d)):
+        coord = y3d[i,:2]
+        between_variable = np.where(yB == coord)[0]
+        if len(between_variable)!=0:
+            del_i = between_variable[0]
+            yB = np.delete(yB,del_i,0)
+            zB = np.delete(zB,del_i,0)
+    return xA, zA, yB, zB
