@@ -1,5 +1,3 @@
-from typing import Any, List
-
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
@@ -32,7 +30,8 @@ def read_image_directory(directory, prefix=None, image_type='png'):
 
     # Read the images and store them in a 3D array
     images = np.array([cv.imread(os.path.join(directory, f),
-                                 cv.IMREAD_GRAYSCALE) for f in files])
+                                 cv.IMREAD_GRAYSCALE) for f in files],
+                      dtype=np.uint64)
 
     return images
 
@@ -44,8 +43,9 @@ def correlate_image_pair(image0, image1, method='correlate', plot=False):
 
     # Compute the correlation between the two images using two methods
     if method == 'correlate':
-        correlation = sig.correlate(image1 - np.mean(image1),
-                                    image0 - np.mean(image0))
+        # correlation = sig.correlate(image1 - np.mean(image1),
+        #                             image0 - np.mean(image0))
+        correlation = sig.correlate(image1, image0)
     elif method == 'convolve':
         correlation = sig.fftconvolve(image1, image0[::-1, ::-1])
     else:
@@ -110,7 +110,8 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor',
     # If the subpixel option was set...
     if subpixel_method is not None:
         # Refine the peak location
-        correction = subpixel_refinement(correlation, peak, subpixel_method)
+        correction = subpixel_refinement(correlation, peak, subpixel_method,
+                                         plot=plot)
         peak = peak + np.array(correction)
 
     # Subtract the image center to get relative coordinates
@@ -120,17 +121,24 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor',
     return displacement
 
 
-def subpixel_refinement(correlation, peak, method='gauss_neighbor'):
+def subpixel_refinement(correlation, peak, method='gauss_neighbor', plot=False):
     """
     TODO: Add documentation
     """
 
-    # With given method...
+    # Three-point offset calculation from the lecture
     if method == 'gauss_neighbor':
+
+        # TODO: This is janky
+        # Zero-pad the correlation array by two pixels in each direction
+        correlation = np.pad(correlation, 2, mode='constant', constant_values=0)
 
         # Get the neighbouring pixels in both dimensions
         neighbors = [correlation[(peak[0] - 1):(peak[0] + 2), peak[1]],
                      correlation[peak[0], (peak[1] - 1):(peak[1] + 2)]]
+
+        # Change all zeros to a small value to avoid division by zero
+        neighbors = [np.where(neighbor == 0, 1, neighbor) for neighbor in neighbors]
 
         # Three-point Gaussian fit in both dimensions
         correction = [(0.5 * (np.log(neighbor[0]) - np.log(neighbor[2]))
@@ -139,6 +147,12 @@ def subpixel_refinement(correlation, peak, method='gauss_neighbor'):
 
     else:
         raise ValueError('Invalid method')
+
+    # If the correction contains nans...
+    if np.any(np.isnan(correction)):
+        # Error
+        # raise ValueError('Subpixel refinement failed')
+        pass
 
     return correction
 
