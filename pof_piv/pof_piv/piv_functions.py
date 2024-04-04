@@ -1,10 +1,33 @@
-import numpy as np
 from pof_piv import *
+
+
 def simple_piv(images, window_size, calib_dist=None, calib_time=None,
                subpixel_method='gauss_neighbor', plot=False,
                plt_flow_params={}, plt_disp_params={}):
     """
-    TODO: Add documentation
+    Perform a basic PIV analysis on two images.
+
+    This function takes in two images and calculates the displacement of
+    windows in the first image with respect to the second image. The
+    displacement is calculated using the correlation between the two images
+    and the subpixel method specified.
+
+    PARAMETERS:
+        images (np.array): Two images [c, y, x].
+        window_size (list): Size of the windows [y, x].
+        calib_dist (float): Calibration distance.
+        calib_time (float): Time between the two images.
+        subpixel_method (str): Subpixel method to use.
+            Options are 'gauss_neighbor'.
+        plot (bool): Whether to plot the flow field and displacements.
+        plt_flow_params (dict): Parameters for the flow field plot.
+        plt_disp_params (dict): Parameters for the displacements plot.
+
+    RETURNS:
+        velocities or displacements (np.array): Velocity or displacement
+            vectors [j, i, y/x], depending on whether calibration data was
+            supplied.
+        coordinates (np.array): Coordinates of the windows [j, i, y/x].
     """
 
     # Check whether there is two or more images

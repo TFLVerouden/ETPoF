@@ -4,8 +4,15 @@ import numpy as np
 import cv2 as cv
 def read_image_directory(directory, prefix=None, image_type='png'):
     """
-    TODO: Add documentation
-    (i, y, x)
+    Read all images in a directory and store them in a 3D array.
+
+    PARAMETERS:
+        directory (str): Path to the directory containing the images.
+        prefix (str): Prefix of the image files to read.
+        image_type (str): Type of the image files to read.
+
+    RETURNS:
+        images (np.array): array (i, y, x) containing the images.
     """
 
     # Get a list of files in the directory

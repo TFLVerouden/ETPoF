@@ -10,7 +10,33 @@ def plot_flow_field(displacements, coordinates, window_size,
                     highlight_color='b', calib_dist=None, units=None,
                     title='Flow field', legend=None, timing=False):
     """
-    TODO: Add documentation
+    Plot the flow field with displacements as arrows.
+
+    This function takes in the same keyword arguments as plot_displacements,
+    but ignores some of them.
+
+    PARAMETERS:
+        displacements (np.array): Displacement vectors [j, i, y/x].
+        coordinates (np.array): Coordinates of the windows [j, i, y/x].
+        window_size (list): Size of the windows [y, x].
+        background (np.array): Background image to plot the flow field on.
+        plot_windows (bool): Whether to plot the windows.
+        arrow_color (str): Color of the arrows.
+        arrow_scale (float): Scale of the arrows.
+        zero_displ_thr (float): Threshold for displacements to be plotted
+            as dots.
+        highlight_radius_range (list): Range of magnitudes to highlight.
+        highlight_angle_range (list): Range of angles to highlight.
+        highlight_color (str): Color of the highlighted arrows and dots.
+        calib_dist (float): Calibration distance.
+        units (str): Units of the calibration distance.
+        title (str): Title of the plot.
+        legend (list): Unused.
+        timing (bool): Whether to show a progress bar.
+
+    RETURNS:
+        fig (plt.figure): Figure object.
+        ax (plt.axis): Axis object.
     """
 
     # Assume the window size is square
@@ -117,8 +143,30 @@ def plot_displacements(displacements,
                        title=None, legend=['Highlighted', 'Out of range'],
                        timing=False):
     """
-    TODO: Add documentation
-    """
+    Plot the displacement vectors.
+
+    This function takes in the same keyword arguments as plot_flow_field,
+    but ignores some of them.
+
+    PARAMETERS:
+        displacements (np.array): Displacement vectors [j, i, y/x].
+        background (np.array): Unused.
+        plot_windows (bool): Unused.
+        arrow_color (str): Unused.
+        arrow_scale (float): Unused.
+        zero_displ_thr (float): Unused.
+        highlight_radius_range (list): Range of magnitudes to highlight.
+        highlight_angle_range (list): Range of angles to highlight.
+        highlight_color (str): Color of the highlighted arrows and dots.
+        calib_dist (float): Calibration distance.
+        units (str): Units of the calibration distance.
+        title (str): Unused.
+        legend (list): Legend of the plot.
+        timing (bool): Whether to show a progress bar.
+
+    RETURNS:
+        fig (plt.figure): Figure object.
+        ax (plt.axis): Axis object.    """
 
     # Plot all displacement vectors
     fig, ax = plt.subplots()

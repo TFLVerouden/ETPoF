@@ -1,15 +1,25 @@
 from scipy import signal as sig
 import matplotlib.pyplot as plt
 import numpy as np
+
+
 def correlate_image_pair(image0, image1, method='correlate', plot=False):
     """
-    TODO: Add documentation
+    Calculate the cross-correlation between two images.
+
+    PARAMETERS:
+        image0 (np.array): First image [y, x].
+        image1 (np.array): Second image [y, x].
+        method (str): Method to use for the cross-correlation.
+            Options are 'correlate' and 'convolve'.
+        plot (bool): Whether to plot the images and the correlation.
+
+    RETURNS:
+        correlation (np.array): Cross-correlation [y, x] between the two images.
     """
 
     # Compute the correlation between the two images using two methods
     if method == 'correlate':
-        # correlation = sig.correlate(image1 - np.mean(image1),
-        #                             image0 - np.mean(image0))
         correlation = sig.correlate(image1, image0)
     elif method == 'convolve':
         correlation = sig.fftconvolve(image1, image0[::-1, ::-1])
@@ -54,7 +64,15 @@ def correlate_image_pair(image0, image1, method='correlate', plot=False):
 
 def find_displacement(correlation, subpixel_method='gauss_neighbor'):
     """
-    TODO: Add documentation
+    Find the displacement peak in a cross-correlation array.
+
+    PARAMETERS:
+        correlation (np.array): Cross-correlation array [y, x].
+        subpixel_method (str): Method to use for subpixel refinement.
+            Options are 'gauss_neighbor'.
+
+    RETURNS:
+        displacement (np.array): Displacement vector [y, x].
     """
 
     # Calculate the peak value of the cross-correlation
@@ -91,7 +109,12 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor'):
 
 def subpixel_refinement(correlation, peak, method='gauss_neighbor'):
     """
-    TODO: Add documentation
+    Refine the peak location in a cross-correlation array to subpixel precision.
+
+    PARAMETERS:
+        correlation (np.array): Cross-correlation array [y, x].
+        peak (np.array): Peak location [y, x].
+        method (str): Method to use for subpixel refinement.
     """
 
     # Three-point offset calculation from the lecture
@@ -124,6 +147,7 @@ def subpixel_refinement(correlation, peak, method='gauss_neighbor'):
 
 def assume_squareness(size):
     """
+    Assume that a window size is square, even if only one dimension is given.
 
     PARAMETERS:
         size (int or tuple): Size of a window in pixels. If an integer is
@@ -149,7 +173,15 @@ def assume_squareness(size):
 
 def divide_in_windows(images, window_size):
     """
-    TODO: Add documentation
+    Divide a set of images into windows of a given (equal!) size.
+
+    PARAMETERS:
+        images (np.array): Images [c, y, x].
+        window_size (int or tuple): Size of a window in pixels.
+
+    RETURNS:
+        windows (np.array): Windows [c, j, i, j_y, i_x].
+        coordinates (np.array): Coordinates of the centre of each window [y, x].
     """
 
     # Process window_size, which may be an integer or tuple
@@ -184,10 +216,19 @@ def divide_in_windows(images, window_size):
 
     return windows, coordinates
 
+
 def filter_displacements(displacements, radius_range=[0, np.inf],
                          angle_range=[-np.pi, np.pi]):
     """
-    TODO: Add documentation
+    Filter out displacement vectors based on their magnitude and angle.
+
+    PARAMETERS:
+        displacements (np.array): Displacement vectors [j, i, y/x].
+        radius_range (list): Range of magnitudes to keep.
+        angle_range (list): Range of angles to keep.
+
+    RETURNS:
+        mask (np.array): Boolean mask [j, i] of the filtered vectors.
     """
 
     # Calculate the magnitude and angle of the displacement vectors
