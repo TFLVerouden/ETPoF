@@ -288,31 +288,35 @@ def filter_displacements(displacements, radius_range=[0, np.inf],
     magnitudes = np.linalg.norm(displacements, axis=2)
     angles = np.arctan2(displacements[:, :, 1], displacements[:, :, 0])
 
-    # Create a mask the same size as displacements
-    mask = np.ones(displacements.shape[:2], dtype=bool)
+    # If only nans are given, skip the filtering
+    if np.all(np.isnan(radius_range + angle_range)):
+        mask = np.zeros(displacements.shape[:2], dtype=bool)
 
-    # Filter the displacements based on the radius range
-    if not np.isnan(radius_range[0]):
-        mask = mask & (magnitudes >= radius_range[0])
-    if not np.isnan(radius_range[1]):
-        mask = mask & (magnitudes <= radius_range[1])
+    # Filter the displacements based on the given radius and angle ranges
+    else:
+        # Create a mask the same size as displacements
+        mask = np.ones(displacements.shape[:2], dtype=bool)
 
-    # Filter the displacements based on the angle range
-    if not np.isnan(angle_range[0]):
-        mask = mask & (angles >= angle_range[0])
-    if not np.isnan(angle_range[1]):
-        mask = mask & (angles <= angle_range[1])
+        if not np.isnan(radius_range[0]):
+            mask = mask & (magnitudes > radius_range[0])
+        if not np.isnan(radius_range[1]):
+            mask = mask & (magnitudes < radius_range[1])
+        if not np.isnan(angle_range[0]):
+            mask = mask & (angles > angle_range[0])
+        if not np.isnan(angle_range[1]):
+            mask = mask & (angles < angle_range[1])
 
     # Return the mask
     return mask
 
 
 def plot_flow_field(displacements, coordinates, window_size,
-                    plot_windows=True, arrow_scale=1, zero_displ_thr=0,
+                    background=None, plot_windows=True,
+                    arrow_color='k', arrow_scale=1, zero_displ_thr=0,
                     highlight_radius_range=[np.nan, np.nan],
                     highlight_angle_range=[np.nan, np.nan],
                     highlight_color='b', calib_dist=None, units=None,
-                    title='Flow field'):
+                    title='Flow field', legend=None, timing=False):
     """
     TODO: Add documentation
     """
@@ -322,6 +326,10 @@ def plot_flow_field(displacements, coordinates, window_size,
 
     # Plot all displacement vectors at the center of each window
     fig, ax = plt.subplots()
+
+    # If a background image is supplied, add it to the plot
+    if background is not None:
+        ax.imshow(background, cmap='gray')
 
     # If a calibration distance was specified, calibrate all values
     if calib_dist is not None:
@@ -342,21 +350,22 @@ def plot_flow_field(displacements, coordinates, window_size,
     zero_displ = np.linalg.norm(displacements, axis=2) < zero_displ_thr
 
     # Plot the indices below the threshold as dots
-    ax.scatter(coordinates[zero_displ & highlight, 1] + window_size[1] / 2,
-               coordinates[zero_displ & highlight, 0] + window_size[0] / 2,
+    ax.scatter(coordinates[zero_displ & highlight, 1],
+               coordinates[zero_displ & highlight, 0],
                c=highlight_color, marker='.', s=arrow_scale)
-    ax.scatter(coordinates[zero_displ & ~highlight, 1] + window_size[1] / 2,
-               coordinates[zero_displ & ~highlight, 0] + window_size[0] / 2,
-               c='k', marker='.', s=arrow_scale)
+    ax.scatter(coordinates[zero_displ & ~highlight, 1],
+               coordinates[zero_displ & ~highlight, 0],
+               c=arrow_color, marker='.', s=arrow_scale)
 
     # Plot the flow field window by window
-    for j in trange(coordinates.shape[0]):
+    for j in trange(coordinates.shape[0], desc='Plotting arrows',
+                    disable=not timing):
         for i in range(coordinates.shape[1]):
 
             # Plot the window
             if plot_windows:
-                ax.add_patch(plt.Rectangle((coordinates[j, i][1],
-                                            coordinates[j, i][0]),
+                ax.add_patch(plt.Rectangle((coordinates[j, i][1] - window_size[1] / 2,
+                                            coordinates[j, i][0] - window_size[0] / 2),
                                            window_size[1],
                                            window_size[0], fill=None,
                                            edgecolor='darkgrey',
@@ -364,15 +373,14 @@ def plot_flow_field(displacements, coordinates, window_size,
 
             # If the displacement is above the zero-threshold, plot an arrow
             if np.linalg.norm(displacements[j, i]) > zero_displ_thr:
-
                 # If the displacement should be highlighted, set the color
-                color = highlight_color if highlight[j, i] else 'k'
+                color = highlight_color if highlight[j, i] else arrow_color
 
                 # Calculate the start and end of the arrow
                 arrow_start = np.array(
-                        [coordinates[j, i][0] + window_size[0] / 2 -
+                        [coordinates[j, i][0] -
                          arrow_scale * 0.5 * displacements[j, i][0],
-                         coordinates[j, i][1] + window_size[1] / 2 -
+                         coordinates[j, i][1] -
                          arrow_scale * 0.5 * displacements[j, i][1]])
 
                 # Plot the arrow
@@ -384,13 +392,12 @@ def plot_flow_field(displacements, coordinates, window_size,
                          head_length=7 * arrow_param,
                          fc=color, ec=color, lw=1)
 
-
-
     # Aspect ratio should be 1
     ax.set_aspect('equal')
 
-    # Flip y axis
-    ax.invert_yaxis()
+    # Set limits
+    ax.set_xlim([0, np.max(coordinates[:, :, 1]) + window_size[1] / 2])
+    ax.set_ylim([np.max(coordinates[:, :, 0] + window_size[0] / 2), 0])
 
     # If a calibration distance was specified, add units to the labels
     if calib_dist is not None:
@@ -410,11 +417,13 @@ def plot_flow_field(displacements, coordinates, window_size,
 
 
 def plot_displacements(displacements,
-                       plot_windows=True, arrow_scale=1, zero_displ_thr=0,
-                        highlight_radius_range=[np.nan, np.nan],
-                        highlight_angle_range=[np.nan, np.nan],
-                        highlight_color='b', calib_dist=None, units=None,
-                        title='Displacement vectors'):
+                       background=None, plot_windows=True,
+                       arrow_color='k', arrow_scale=1, zero_displ_thr=0,
+                       highlight_radius_range=[np.nan, np.nan],
+                       highlight_angle_range=[np.nan, np.nan],
+                       highlight_color='b', calib_dist=None, units=None,
+                       title=None, legend=['Highlighted', 'Out of range'],
+                       timing=False):
     """
     TODO: Add documentation
     """
@@ -433,9 +442,9 @@ def plot_displacements(displacements,
 
     # Plot the indices below the threshold as dots
     ax.scatter(displacements[highlight, 1], displacements[highlight, 0],
-               marker='.', s=5, color=highlight_color)
+               marker='^', s=10, color=highlight_color)
     ax.scatter(displacements[~highlight, 1], displacements[~highlight, 0],
-               marker='.', s=5, color='k')
+               marker='o', s=10, color='k')
 
     # Draw zero lines
     ax.axhline(0, color='darkgrey', lw=0.5)
@@ -447,6 +456,10 @@ def plot_displacements(displacements,
     ax.set_ylim([np.amin(displacements[:, :, 0]) - 1,
                  np.amax(displacements[:, :, 0]) + 1])
 
+    # Pad the x limits to make the plot square
+    ax.set_xlim([np.amin([ax.get_xlim()[0], ax.get_ylim()[0]]),
+                 np.amax([ax.get_xlim()[1], ax.get_ylim()[1]])])
+
     ax.set_aspect('equal')
 
     # If a calibration distance was specified, add units to the labels
@@ -457,7 +470,11 @@ def plot_displacements(displacements,
         ax.set_xlabel('Δx [px]')
         ax.set_ylabel('Δy [px]')
 
-    ax.set_title(title)
+    # If points were highlighted, add a legend
+    if np.any(highlight):
+        ax.legend(legend)
+
+    ax.set_title('All displacement vectors')
     plt.show()
 
     return fig, ax
