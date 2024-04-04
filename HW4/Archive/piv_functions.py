@@ -220,6 +220,36 @@ def divide_in_windows(images, window_size):
 
     return windows, coordinates
 
+def filter_displacements(displacements, radius_range=[0, np.inf],
+                         angle_range=[-np.pi, np.pi]):
+    """
+    TODO: Add documentation
+    """
+
+    # Calculate the magnitude and angle of the displacement vectors
+    magnitudes = np.linalg.norm(displacements, axis=2)
+    angles = np.arctan2(displacements[:, :, 1], displacements[:, :, 0])
+
+    # If only nans are given, skip the filtering
+    if np.all(np.isnan(radius_range + angle_range)):
+        mask = np.zeros(displacements.shape[:2], dtype=bool)
+
+    # Filter the displacements based on the given radius and angle ranges
+    else:
+        # Create a mask the same size as displacements
+        mask = np.ones(displacements.shape[:2], dtype=bool)
+
+        if not np.isnan(radius_range[0]):
+            mask = mask & (magnitudes > radius_range[0])
+        if not np.isnan(radius_range[1]):
+            mask = mask & (magnitudes < radius_range[1])
+        if not np.isnan(angle_range[0]):
+            mask = mask & (angles > angle_range[0])
+        if not np.isnan(angle_range[1]):
+            mask = mask & (angles < angle_range[1])
+
+    # Return the mask
+    return mask
 
 def simple_piv(images, window_size, calib_dist=None, calib_time=None,
                subpixel_method='gauss_neighbor', plot=False,
@@ -276,38 +306,6 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
         return velocities, coordinates
     else:
         return displacements, coordinates
-
-
-def filter_displacements(displacements, radius_range=[0, np.inf],
-                         angle_range=[-np.pi, np.pi]):
-    """
-    TODO: Add documentation
-    """
-
-    # Calculate the magnitude and angle of the displacement vectors
-    magnitudes = np.linalg.norm(displacements, axis=2)
-    angles = np.arctan2(displacements[:, :, 1], displacements[:, :, 0])
-
-    # If only nans are given, skip the filtering
-    if np.all(np.isnan(radius_range + angle_range)):
-        mask = np.zeros(displacements.shape[:2], dtype=bool)
-
-    # Filter the displacements based on the given radius and angle ranges
-    else:
-        # Create a mask the same size as displacements
-        mask = np.ones(displacements.shape[:2], dtype=bool)
-
-        if not np.isnan(radius_range[0]):
-            mask = mask & (magnitudes > radius_range[0])
-        if not np.isnan(radius_range[1]):
-            mask = mask & (magnitudes < radius_range[1])
-        if not np.isnan(angle_range[0]):
-            mask = mask & (angles > angle_range[0])
-        if not np.isnan(angle_range[1]):
-            mask = mask & (angles < angle_range[1])
-
-    # Return the mask
-    return mask
 
 
 def plot_flow_field(displacements, coordinates, window_size,
