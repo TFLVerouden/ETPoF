@@ -4,6 +4,54 @@ from matplotlib import pyplot as plt
 from tqdm import trange
 
 
+def plot_correlation(image0, image1, correlation):
+    """
+    Plot the images and the correlation between them.
+
+    PARAMETERS:
+        image0 (np.array): First image [y, x].
+        image1 (np.array): Second image [y, x].
+        correlation (np.array): Cross-correlation [y, x] between the two images.
+
+    RETURNS:
+        fig (plt.figure): Figure object.
+        ax (plt.axis): Axis object.
+    """
+
+    # Plot the frames
+    fig, ax = plt.subplots(1, 2, figsize=(6, 3))
+    ax[0].imshow(image0, cmap='gray')
+    ax[0].set_title('Frame 0')
+    ax[0].set_xlabel('y [px]')
+    ax[0].set_ylabel('x [px]')
+
+    ax[1].imshow(image1, cmap='gray')
+    ax[1].set_title('Frame 1')
+    ax[1].set_xlabel('y [px]')
+    ax[1].set_yticklabels([])
+    plt.show()
+
+    # Plot the correlation
+    # TODO: Set size of extent correctly for unequal frame sizes
+    ax_extent = [-image0.shape[1] + 0.5, image0.shape[1] - 0.5,
+                 -image0.shape[0] + 0.5, image0.shape[0] - 0.5]
+
+    # TODO: Set ticks based on image size
+    ax_ticks = np.round(np.array(ax_extent) / 10) * 10
+
+    fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+    ax.imshow(correlation, cmap='gray', interpolation='none',
+              extent=ax_extent)
+    ax.set_xticks(np.arange(ax_ticks[0], ax_ticks[1] + 1, 10))
+    ax.set_yticks(np.arange(ax_ticks[2], ax_ticks[3] + 1, 10))
+    ax.set_title('Correlation')
+    ax.set_xlabel('dy [px]')
+    ax.set_ylabel('dx [px]')
+    plt.show()
+
+    return fig, ax
+
+
 def plot_flow_field(displacements, coordinates, window_size,
                     background=None, plot_windows=True,
                     arrow_color='k', arrow_scale=1, zero_displ_thr=0,
