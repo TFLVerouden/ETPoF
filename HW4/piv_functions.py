@@ -204,8 +204,8 @@ def divide_in_windows(images, window_size):
 
     # Get the coordinates of the top left pixel of each window
     coordinates = np.array(
-            [[[y, x] for y in range(0, images.shape[1], window_size[0])] for x
-             in range(0, images.shape[2], window_size[1])])
+            [[[y, x] for x in range(0, images.shape[2], window_size[1])] for y
+             in range(0, images.shape[1], window_size[0])])
 
     # Get the coordinates of the centre of each window
     coordinates = coordinates + np.array(window_size) / 2
@@ -237,19 +237,24 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
 
     # Divide the images into windows
     windows, coordinates = divide_in_windows(images, window_size)
+    print(f'wind: {windows.shape}')
+    print(f'coord: {coordinates.shape}')
 
     # Calculate the correlation of each window j,i in frame 0 with the
     # corresponding window in frame 1
     correlations = np.array([[correlate_image_pair(windows[0, j, i],
                                                    windows[1, j, i])
-                              for i in range(len(windows[0, 0]))]
-                             for j in range(len(windows[0, 1]))])
+                              for i in range(windows.shape[2])]
+                             for j in range(windows.shape[1])])
+    print(f'corr: {correlations.shape}')
 
-    # Calculate the displacement of each window j,i in frame 0 with the
+    # Calculate the displacement of each window j, i in frame 0 with the
     # corresponding window in frame 1
     displacements = np.array(
             [[find_displacement(correlation, subpixel_method=subpixel_method)
               for correlation in row] for row in correlations])
+    print(f'disp: {displacements.shape}')
+
 
     if plot:
         # Plot the flow field
@@ -296,12 +301,12 @@ def plot_flow_field(displacements, coordinates, window_size,
     # indicating the displacement
     arrow_param = calib_dist if calib_dist is not None else 1
 
-    for j in range(len(coordinates[0])):
-        for i in range(len(coordinates[1])):
+    for j in range(coordinates.shape[0]):
+        for i in range(coordinates.shape[1]):
             # Calculate the start and end of the arrow
-            arrow_start = np.array([coordinates[j, i][1] + window_size[1] / 2 -
+            arrow_start = np.array([coordinates[j, i][0] + window_size[0] / 2 -
                                     arrow_scale * 0.5 * displacements[j, i][0],
-                                    coordinates[j, i][0] + window_size[0] / 2 -
+                                    coordinates[j, i][1] + window_size[1] / 2 -
                                     arrow_scale * 0.5 * displacements[j, i][1]])
 
             # Plot the arrow
