@@ -1,12 +1,14 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from tqdm import trange
 from pof_piv import *
+import numpy as np
+from matplotlib import pyplot as plt
+from tqdm import trange
+
+
 def plot_flow_field(displacements, coordinates, window_size,
                     background=None, plot_windows=True,
                     arrow_color='k', arrow_scale=1, zero_displ_thr=0,
-                    highlight_radius_range=[np.nan, np.nan],
-                    highlight_angle_range=[np.nan, np.nan],
+                    highlight_radius_range=None,
+                    highlight_angle_range=None,
                     highlight_color='b', calib_dist=None, units=None,
                     title='Flow field', legend=None, timing=False):
     """
@@ -18,7 +20,7 @@ def plot_flow_field(displacements, coordinates, window_size,
     PARAMETERS:
         displacements (np.array): Displacement vectors [j, i, y/x].
         coordinates (np.array): Coordinates of the windows [j, i, y/x].
-        window_size (list): Size of the windows [y, x].
+        window_size (int | tuple): Size of the windows [y, x].
         background (np.array): Background image to plot the flow field on.
         plot_windows (bool): Whether to plot the windows.
         arrow_color (str): Color of the arrows.
@@ -40,6 +42,10 @@ def plot_flow_field(displacements, coordinates, window_size,
     """
 
     # Assume the window size is square
+    if highlight_angle_range is None:
+        highlight_angle_range = [np.nan, np.nan]
+    if highlight_radius_range is None:
+        highlight_radius_range = [np.nan, np.nan]
     window_size = assume_squareness(window_size)
 
     # Plot all displacement vectors at the center of each window
@@ -82,12 +88,14 @@ def plot_flow_field(displacements, coordinates, window_size,
 
             # Plot the window
             if plot_windows:
-                ax.add_patch(plt.Rectangle((coordinates[j, i][1] - window_size[1] / 2,
-                                            coordinates[j, i][0] - window_size[0] / 2),
-                                           window_size[1],
-                                           window_size[0], fill=None,
-                                           edgecolor='darkgrey',
-                                           linewidth=1))
+                ax.add_patch(
+                        plt.Rectangle(
+                                (coordinates[j, i][1] - window_size[1] / 2,
+                                 coordinates[j, i][0] - window_size[0] / 2),
+                                window_size[1],
+                                window_size[0], fill=None,
+                                edgecolor='darkgrey',
+                                linewidth=1))
 
             # If the displacement is above the zero-threshold, plot an arrow
             if np.linalg.norm(displacements[j, i]) > zero_displ_thr:
@@ -125,7 +133,7 @@ def plot_flow_field(displacements, coordinates, window_size,
         ax.set_xlabel('x [px]')
         ax.set_ylabel('y [px]')
 
-    # If a arrow scale was specified, add it to the title
+    # If an arrow scale was specified, add it to the title
     if arrow_scale != 1:
         title = title + f' (arrows scaled ×{arrow_scale})'
     ax.set_title(title)
@@ -137,10 +145,10 @@ def plot_flow_field(displacements, coordinates, window_size,
 def plot_displacements(displacements,
                        background=None, plot_windows=True,
                        arrow_color='k', arrow_scale=1, zero_displ_thr=0,
-                       highlight_radius_range=[np.nan, np.nan],
-                       highlight_angle_range=[np.nan, np.nan],
+                       highlight_radius_range=None,
+                       highlight_angle_range=None,
                        highlight_color='b', calib_dist=None, units=None,
-                       title=None, legend=['Highlighted', 'Out of range'],
+                       title=None, legend=None,
                        timing=False):
     """
     Plot the displacement vectors.
@@ -166,7 +174,16 @@ def plot_displacements(displacements,
 
     RETURNS:
         fig (plt.figure): Figure object.
-        ax (plt.axis): Axis object.    """
+        ax (plt.axis): Axis object.
+    """
+
+    # Set all default values
+    if legend is None:
+        legend = ['Highlighted', 'Out of range']
+    if highlight_angle_range is None:
+        highlight_angle_range = [np.nan, np.nan]
+    if highlight_radius_range is None:
+        highlight_radius_range = [np.nan, np.nan]
 
     # Plot all displacement vectors
     fig, ax = plt.subplots()

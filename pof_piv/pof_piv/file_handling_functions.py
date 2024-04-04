@@ -1,7 +1,9 @@
 import os
 from natsort import natsorted
-import numpy as np
 import cv2 as cv
+import numpy as np
+
+
 def read_image_directory(directory, prefix=None, image_type='png'):
     """
     Read all images in a directory and store them in a 3D array.

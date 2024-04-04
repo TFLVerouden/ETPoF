@@ -1,6 +1,7 @@
-from scipy import signal as sig
-import matplotlib.pyplot as plt
+from pof_piv import *
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy import signal as sig
 
 
 def correlate_image_pair(image0, image1, method='correlate', plot=False):
@@ -42,7 +43,7 @@ def correlate_image_pair(image0, image1, method='correlate', plot=False):
         plt.show()
 
         # Plot the correlation
-        # TODO: Set size of extent correctly for inequal frame sizes
+        # TODO: Set size of extent correctly for unequal frame sizes
         ax_extent = [-image0.shape[1] + 0.5, image0.shape[1] - 0.5,
                      -image0.shape[0] + 0.5, image0.shape[0] - 0.5]
 
@@ -132,7 +133,8 @@ def subpixel_refinement(correlation, peak, method='gauss_neighbor'):
             plt.show()
 
         # Change all zeros to a small value to avoid division by zero
-        # neighbors = [np.where(neighbor == 0, 1, neighbor) for neighbor in neighbors]
+        # neighbors = [np.where(neighbor == 0, 1, neighbor)
+        # for neighbor in neighbors]
 
         # Three-point Gaussian fit in both dimensions
         correction = [(0.5 * (np.log(neighbor[0]) - np.log(neighbor[2]))
@@ -217,8 +219,8 @@ def divide_in_windows(images, window_size):
     return windows, coordinates
 
 
-def filter_displacements(displacements, radius_range=[0, np.inf],
-                         angle_range=[-np.pi, np.pi]):
+def filter_displacements(displacements, radius_range=None,
+                         angle_range=None):
     """
     Filter out displacement vectors based on their magnitude and angle.
 
@@ -230,6 +232,12 @@ def filter_displacements(displacements, radius_range=[0, np.inf],
     RETURNS:
         mask (np.array): Boolean mask [j, i] of the filtered vectors.
     """
+
+    # Set default values
+    if angle_range is None:
+        angle_range = [-np.pi, np.pi]
+    if radius_range is None:
+        radius_range = [0, np.inf]
 
     # Calculate the magnitude and angle of the displacement vectors
     magnitudes = np.linalg.norm(displacements, axis=2)

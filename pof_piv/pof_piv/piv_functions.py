@@ -1,4 +1,5 @@
 from pof_piv import *
+import numpy as np
 
 
 def simple_piv(images, window_size, calib_dist=None, calib_time=None,
@@ -14,7 +15,7 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
 
     PARAMETERS:
         images (np.array): Two images [c, y, x].
-        window_size (list): Size of the windows [y, x].
+        window_size (int | tuple): Size of the windows [y, x].
         calib_dist (float): Calibration distance.
         calib_time (float): Time between the two images.
         subpixel_method (str): Subpixel method to use.
@@ -43,7 +44,7 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
     # print(f'wind: {windows.shape}')
     # print(f'coord: {coordinates.shape}')
 
-    # Calculate the correlation of each window j,i in frame 0 with the
+    # Calculate the correlation of each window [j, i] in frame 0 with the
     # corresponding window in frame 1
     correlations = np.array([[correlate_image_pair(windows[0, j, i],
                                                    windows[1, j, i])
@@ -51,7 +52,7 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
                              for j in range(windows.shape[1])])
     # print(f'corr: {correlations.shape}')
 
-    # Calculate the displacement of each window j, i in frame 0 with the
+    # Calculate the displacement of each window [j, i] in frame 0 with the
     # corresponding window in frame 1
     displacements = np.array(
             [[find_displacement(correlation, subpixel_method=subpixel_method)
