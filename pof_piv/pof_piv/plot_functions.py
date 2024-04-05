@@ -207,11 +207,13 @@ def plot_displacements(displacements,
     ax.axhline(0, color='darkgrey', lw=0.5)
     ax.axvline(0, color='darkgrey', lw=0.5)
 
-    # Pad the limits
-    ax.set_xlim([np.amin(displacements[:, :, 1]) - 1,
-                 np.amax(displacements[:, :, 1]) + 1])
-    ax.set_ylim([np.amin(displacements[:, :, 0]) - 1,
-                 np.amax(displacements[:, :, 0]) + 1])
+    # Pad the limits, but use only finite values
+    displacements_finite = displacements[np.any(np.isfinite(displacements),
+                                                axis=2)]
+    ax.set_xlim([np.nanmin(displacements_finite[:, 1]) - 1,
+                 np.nanmax(displacements_finite[:, 1]) + 1])
+    ax.set_ylim([np.nanmin(displacements_finite[:, 0]) - 1,
+                 np.nanmax(displacements_finite[:, 0]) + 1])
 
     # Pad the x limits to make the plot square
     ax.set_xlim([np.amin([ax.get_xlim()[0], ax.get_ylim()[0]]),

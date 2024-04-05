@@ -53,8 +53,10 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
     # Calculate the displacement of each window [j, i] in frame 0 with the
     # corresponding window in frame 1
     displacements = np.array(
-            [[find_displacement(correlation, subpixel_method=subpixel_method)
-              for correlation in row] for row in correlations])
+            [[find_displacement(correlation,
+                                subpixel_method=subpixel_method,
+                                skip_errors=skip_errors) for correlation in row]
+             for row in correlations])
 
     if plot:
         # Plot the flow field

@@ -59,7 +59,8 @@ def correlate_image_pair(image0, image1, method='correlate', plot=False):
     return correlation
 
 
-def find_displacement(correlation, subpixel_method='gauss_neighbor'):
+def find_displacement(correlation, subpixel_method='gauss_neighbor',
+                      skip_errors=False):
     """
     Find the displacement peak in a cross-correlation array.
 
@@ -67,32 +68,44 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor'):
         correlation (np.array): Cross-correlation array [y, x].
         subpixel_method (str): Method to use for subpixel refinement.
             Options are 'gauss_neighbor'.
+        skip_errors (bool): Whether to skip errors in subpixel refinement.
 
     RETURNS:
         displacement (np.array): Displacement vector [y, x].
     """
 
-    # Calculate the peak value of the cross-correlation
+    # If all values in the correlation array are zero...
+    if np.all(correlation == 0):
+        # Return a nan displacement
+        return np.array([np.nan, np.nan])
+
+    # Calculate the peak value indices of the cross-correlation
     peak = np.argwhere(np.amax(correlation) == correlation)
 
     # If multiple maxima were found...
     if len(peak) > 1:
         # Error
-        raise ValueError('Multiple equal maxima found in cross-correlation')
-        # TODO: Handle multiple (neighbouring) maxima, if necessary
+        if skip_errors:
+            return [np.nan, np.nan]
+        else:
+            raise ValueError('Multiple equal maxima found in cross-correlation')
     else:
         # Take the first value if only one peak was found
         peak = peak[0]
 
-    # If the peak is at the edge of the correlation array...
-    if np.any(peak == np.array(correlation.shape - np.ones_like((1, 2)))):
-        # Throw a warning
-        print('Peak is at the edge of the correlation array')
-
     # If the subpixel option was set...
-    elif subpixel_method is not None:
-        # Refine the peak location
-        correction = subpixel_refinement(correlation, peak, subpixel_method)
+    if subpixel_method is not None:
+        # Try refining the peak location
+        try:
+            correction = subpixel_refinement(correlation, peak, subpixel_method)
+
+        # If this gives an error, continue without refinement or throw an error
+        except ValueError as e:
+            if skip_errors:
+                correction = np.zeros((2,))
+            else:
+                raise e
+
         peak = peak + np.array(correction)
 
     # Subtract the image center to get relative coordinates
@@ -100,6 +113,28 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor'):
     displacement = peak - image_centre
 
     return displacement
+
+
+def intensity_at_peak(correlation, displacement):
+    """
+    Get the intensity at the peak of a cross-correlation array.
+
+    PARAMETERS:
+        correlation (np.array): Cross-correlation array [y, x].
+        displacement (np.array): Displacement vector [y, x].
+
+    RETURNS:
+        intensity (float): Intensity at the peak of the cross-correlation.
+    """
+
+    # Convert the peak values back to indices
+    image_centre = (np.array(correlation.shape - np.ones_like((1, 2))) / 2)
+    peak = displacement + image_centre
+
+    # Get the intensity at the peak indices
+    intensity = correlation[int(peak[0]), int(peak[1])]
+
+    return intensity
 
 
 def subpixel_refinement(correlation, peak, method='gauss_neighbor'):
@@ -119,16 +154,15 @@ def subpixel_refinement(correlation, peak, method='gauss_neighbor'):
         neighbors = [correlation[(peak[0] - 1):(peak[0] + 2), peak[1]],
                      correlation[peak[0], (peak[1] - 1):(peak[1] + 2)]]
 
+        # If any of the neighbors are zero
+        if np.any([np.any(neighbor == 0) for neighbor in neighbors]):
+            raise ValueError(
+                    'Zero intensity pixels do not allow for Gaussian neighbor interpolation.')
+
         # If the neighbors shape is not 3x3...
         if not all([neighbor.shape == (3,) for neighbor in neighbors]):
-            fig, ax = plt.subplots()
-            ax.imshow(correlation, cmap='gray')
-            ax.plot(peak[1], peak[0], 'ro')
-            plt.show()
-
-        # Change all zeros to a small value to avoid division by zero
-        # neighbors = [np.where(neighbor == 0, 1, neighbor)
-        # for neighbor in neighbors]
+            raise ValueError(
+                    'Tried to calculate a maximum at the edge of the window.')
 
         # Three-point Gaussian fit in both dimensions
         correction = [(0.5 * (np.log(neighbor[0]) - np.log(neighbor[2]))
@@ -274,9 +308,15 @@ def remove_outliers(displacements, mask, windows, method='nan'):
     elif method == 'mean':
         # Set the outliers to the mean of the surrounding values
         raise NotImplementedError(
-            'Mean-based outlier removal is not implemented')
+                'Mean-based outlier removal is not implemented')
         # TODO: Implement mean-based outlier removal
+
+    return displacements
 
 
 def shift_windows():
+    pass
+
+
+def merge_windows():
     pass
