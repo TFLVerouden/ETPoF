@@ -40,7 +40,7 @@ def read_image_directory(directory, prefix=None, image_type='png'):
     return images
 
 
-def read_image_sets(directory, prefix=None, image_type='png', grouping=False):
+def read_image_sets(directory, prefix=None, image_type='png', grouping_ab=False):
     """
     Read sets of images in subdirectories and store them in a list of 3D arrays.
 
@@ -65,10 +65,14 @@ def read_image_sets(directory, prefix=None, image_type='png', grouping=False):
         if len(files) < 2:
             continue
 
-        # If specified, group files with common base names
-        if grouping & (len(files) > 2):
+        # If a prefix is specified, filter the list of files
+        if prefix is not None:
+            files = [f for f in files if f.startswith(prefix)]
 
-            files = os.listdir(subdirectory)
+        # If specified, group files with common base names
+        if grouping_ab & (len(files) > 2):
+
+            # files = os.listdir(subdirectory)
 
             # Go through all files
             for file in files:
@@ -89,7 +93,7 @@ def read_image_sets(directory, prefix=None, image_type='png', grouping=False):
 
         else:
             # Read the images in the subdirectory
-            images = read_image_directory(subdirectory, prefix, image_type)
+            images = read_image_directory(subdirectory, prefix, image_type=image_type)
             images_sets.append(images)
 
             # Save the subdirectory name

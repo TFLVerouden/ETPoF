@@ -4,8 +4,8 @@ import numpy as np
 
 
 def simple_piv(images, window_size, calib_dist=None, calib_time=None,
-               subpixel_method='gauss_neighbor', plot=False,
-               plt_flow_params={}, plt_disp_params={}):
+               subpixel_method='gauss_neighbor', skip_errors=False,
+               plot=False, plt_flow_params={}, plt_disp_params={}):
     """
     Perform a basic PIV analysis on two images.
 
@@ -42,8 +42,6 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
 
     # Divide the images into windows
     windows, coordinates = divide_in_windows(images, window_size)
-    # print(f'wind: {windows.shape}')
-    # print(f'coord: {coordinates.shape}')
 
     # Calculate the correlation of each window [j, i] in frame 0 with the
     # corresponding window in frame 1
@@ -51,14 +49,12 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
                                                    windows[1, j, i], plot=False)
                               for i in range(windows.shape[2])]
                              for j in range(windows.shape[1])])
-    # print(f'corr: {correlations.shape}')
 
     # Calculate the displacement of each window [j, i] in frame 0 with the
     # corresponding window in frame 1
     displacements = np.array(
             [[find_displacement(correlation, subpixel_method=subpixel_method)
               for correlation in row] for row in correlations])
-    # print(f'disp: {displacements.shape}')
 
     if plot:
         # Plot the flow field
