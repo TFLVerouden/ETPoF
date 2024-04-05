@@ -42,11 +42,8 @@ def correlate_image_pair(image0, image1, method='correlate', plot=False):
         plt.show()
 
         # Plot the correlation
-        # TODO: Set size of extent correctly for unequal frame sizes
         ax_extent = [-image0.shape[1] + 0.5, image0.shape[1] - 0.5,
                      -image0.shape[0] + 0.5, image0.shape[0] - 0.5]
-
-        # TODO: Set ticks based on image size
         ax_ticks = np.round(np.array(ax_extent) / 10) * 10
 
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
@@ -77,8 +74,6 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor'):
 
     # Calculate the peak value of the cross-correlation
     peak = np.argwhere(np.amax(correlation) == correlation)
-
-    # TODO: can be made faster with https://stackoverflow.com/a/58652335
 
     # If multiple maxima were found...
     if len(peak) > 1:
@@ -219,7 +214,7 @@ def divide_in_windows(images, window_size):
 
 
 def filter_displacements(displacements, radius_range=None,
-                         angle_range=None):
+                         angle_range=None, template=None):
     """
     Filter out displacement vectors based on their magnitude and angle.
 
@@ -227,38 +222,61 @@ def filter_displacements(displacements, radius_range=None,
         displacements (np.array): Displacement vectors [j, i, y/x].
         radius_range (list): Range of magnitudes to keep.
         angle_range (list): Range of angles to keep.
+        template (np.array): Template to use for filtering.
 
     RETURNS:
         mask (np.array): Boolean mask [j, i] of the filtered vectors.
     """
 
-    # Set default values
-    if angle_range is None:
-        angle_range = [-np.pi, np.pi]
-    if radius_range is None:
-        radius_range = [0, np.inf]
+    # MODE 1: Polar coordinates
+    if template is None:
+        # Set default values
+        if angle_range is None:
+            angle_range = [-np.pi, np.pi]
+        if radius_range is None:
+            radius_range = [0, np.inf]
 
-    # Calculate the magnitude and angle of the displacement vectors
-    magnitudes = np.linalg.norm(displacements, axis=2)
-    angles = np.arctan2(displacements[:, :, 1], displacements[:, :, 0])
+        # Calculate the magnitude and angle of the displacement vectors
+        magnitudes = np.linalg.norm(displacements, axis=2)
+        angles = np.arctan2(displacements[:, :, 1], displacements[:, :, 0])
 
-    # If only nans are given, skip the filtering
-    if np.all(np.isnan(radius_range + angle_range)):
-        mask = np.zeros(displacements.shape[:2], dtype=bool)
+        # If only nans are given, skip the filtering
+        if np.all(np.isnan(radius_range + angle_range)):
+            mask = np.zeros(displacements.shape[:2], dtype=bool)
 
-    # Filter the displacements based on the given radius and angle ranges
+        # Filter the displacements based on the given radius and angle ranges
+        else:
+            # Create a mask the same size as displacements
+            mask = np.ones(displacements.shape[:2], dtype=bool)
+
+            if not np.isnan(radius_range[0]):
+                mask = mask & (magnitudes > radius_range[0])
+            if not np.isnan(radius_range[1]):
+                mask = mask & (magnitudes < radius_range[1])
+            if not np.isnan(angle_range[0]):
+                mask = mask & (angles > angle_range[0])
+            if not np.isnan(angle_range[1]):
+                mask = mask & (angles < angle_range[1])
+
+        # Return the mask
+        return mask
+
+    # MODE 2: Template-based filtering
     else:
-        # Create a mask the same size as displacements
-        mask = np.ones(displacements.shape[:2], dtype=bool)
+        raise NotImplementedError('Template-based filtering is not implemented')
+        # TODO: Implement template-based filtering
 
-        if not np.isnan(radius_range[0]):
-            mask = mask & (magnitudes > radius_range[0])
-        if not np.isnan(radius_range[1]):
-            mask = mask & (magnitudes < radius_range[1])
-        if not np.isnan(angle_range[0]):
-            mask = mask & (angles > angle_range[0])
-        if not np.isnan(angle_range[1]):
-            mask = mask & (angles < angle_range[1])
 
-    # Return the mask
-    return mask
+def remove_outliers(displacements, mask, windows, method='nan'):
+    if method == 'nan':
+        # Set the outliers to NaN
+        displacements[~mask] = np.nan
+    elif method == 'mean':
+        # Set the outliers to the mean of the surrounding values
+        raise NotImplementedError(
+            'Mean-based outlier removal is not implemented')
+        # TODO: Implement mean-based outlier removal
+
+
+def shift_windows():
+    pass
