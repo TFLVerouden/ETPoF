@@ -1,7 +1,7 @@
 [project]
 name = "pof_piv"
 version = "2024.04.05"
-description = "PoF PIV functions"
+description = "PoF PIV functions, HW4 version"
 
 [build-system]
 build-backend = "flit_core.buildapi"
