@@ -1,4 +1,5 @@
-from pof_piv import *
+from pof_piv.helper_functions import *
+from pof_piv.plot_functions import *
 import numpy as np
 
 
@@ -47,7 +48,7 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
     # Calculate the correlation of each window [j, i] in frame 0 with the
     # corresponding window in frame 1
     correlations = np.array([[correlate_image_pair(windows[0, j, i],
-                                                   windows[1, j, i], plot=plot)
+                                                   windows[1, j, i], plot=False)
                               for i in range(windows.shape[2])]
                              for j in range(windows.shape[1])])
     # print(f'corr: {correlations.shape}')
