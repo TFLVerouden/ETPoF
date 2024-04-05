@@ -102,6 +102,9 @@ def read_image_sets(directory, prefix=None, image_type='png', grouping=False):
     if common_str:
         set_names = [name.replace(common_str, '') for name in set_names]
 
+    # Remove trailing underscores from the set names
+    set_names = [name.rstrip('_') for name in set_names]
+
     # Naturally sort the set names and images by the set names
     sort_order = index_natsorted(set_names)
     image_sets = [images_sets[i] for i in sort_order]
