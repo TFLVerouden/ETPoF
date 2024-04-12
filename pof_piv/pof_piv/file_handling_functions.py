@@ -3,9 +3,10 @@ from natsort import natsorted
 from natsort import index_natsorted
 import cv2 as cv
 import numpy as np
+from tqdm import tqdm
 
 
-def read_image_directory(directory, prefix=None, image_type='png'):
+def read_image_directory(directory, prefix=None, image_type='png', timing=False):
     """
     Read all images in a directory and store them in a 3D array.
 
@@ -13,6 +14,7 @@ def read_image_directory(directory, prefix=None, image_type='png'):
         directory (str): Path to the directory containing the images.
         prefix (str): Prefix of the image files to read.
         image_type (str): Type of the image files to read.
+        timing (bool): Whether to show a progress bar.
 
     RETURNS:
         images (np.array): array (i, y, x) containing the images.
@@ -34,7 +36,7 @@ def read_image_directory(directory, prefix=None, image_type='png'):
 
     # Read the images and store them in a 3D array
     images = np.array([cv.imread(os.path.join(directory, f),
-                                 cv.IMREAD_GRAYSCALE) for f in files],
+                                 cv.IMREAD_GRAYSCALE) for f in tqdm(files, desc='Reading images', disable=not timing)],
                       dtype=np.uint64)
 
     return images

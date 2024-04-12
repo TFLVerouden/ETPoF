@@ -32,7 +32,7 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
         coordinates (np.array): Coordinates of the windows [j, i, y/x].
     """
 
-    # Check whether there is two or more images
+    # Check whether there are two or more images
     if images.shape[0] < 2:
         # Error
         raise ValueError('At least two images are required for PIV.')
@@ -78,3 +78,58 @@ def simple_piv(images, window_size, calib_dist=None, calib_time=None,
         return velocities, coordinates
     else:
         return displacements, coordinates
+
+
+def horizontal_flow_piv(images, window_counts, margins=[0, 0, 0, 0], debug=False):
+
+    # Check whether there are two or more images
+    if images.shape[0] < 2:
+        # Error
+        raise ValueError('At least two images are required for PIV.')
+    elif images.shape[0] > 2:
+        # Warning
+        raise NotImplementedError('Only two images are currently supported.')
+
+    # Divide the images into windows
+    windows, centers, locations, sizes = divide_in_n_windows(images,
+                                                             window_counts,
+                                                             margins=margins)
+
+    if debug:
+        # Plot the images
+        fig, ax = plt.subplots(1, 2)
+        ax[0].imshow(images[0], cmap='gray')
+        ax[1].imshow(images[1], cmap='gray')
+
+        plt.show()
+
+    # Check whether the windows in the vertical direction are of equal size
+    try:
+        assert np.all([np.all([window.shape[2] == windows[0][0].shape[2] for
+                               window in row]) for row in windows])
+    except AssertionError:
+        raise ValueError(
+            f'An image of width {images[0].shape[1] - margins[2] - margins[3]} could not be divided into {window_counts[1]} windows of equal width.')
+
+    # plt.imshow(correlate_image_pair(images[0], images[1]))
+
+    # Calculate the correlation of each window [j, i] in frame 0 with the
+    # corresponding window in frame 1
+    correlations = [[correlate_image_pair(windows[j][i][0],
+                                              windows[j][i][1], plot=False)
+                     for i in range(window_counts[1])]
+                    for j in range(window_counts[0])]
+
+    # Add up all correlation images in the horizontal direction
+    correlation_rows = [np.sum(row, axis=0) for row in correlations]
+
+    # # Average the x coordinates of the windows
+    # centers = np.mean(centers, axis=1)
+
+    # Calculate the displacement of each window [j, i] in frame 0 with the
+    # corresponding window in frame 1
+    displacements = np.array(
+            [find_displacement(correlation, skip_errors=True) for correlation in
+             correlation_rows])
+
+    return displacements

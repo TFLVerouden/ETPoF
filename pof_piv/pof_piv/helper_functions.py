@@ -80,18 +80,18 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor',
         return np.array([np.nan, np.nan])
 
     # Calculate the peak value indices of the cross-correlation
-    peak = np.argwhere(np.amax(correlation) == correlation)
+    peaks = np.argwhere(np.amax(correlation) == correlation)
 
     # If multiple maxima were found...
-    if len(peak) > 1:
-        # Error
-        if skip_errors:
-            return [np.nan, np.nan]
-        else:
-            raise ValueError('Multiple equal maxima found in cross-correlation')
+    if len(peaks) > 1:
+
+        # Use the peak with the largest sum of its neighbours
+        peak = peaks[np.argmax([np.sum(correlation[p[0] - 1:p[0] + 2,
+                                        p[1] - 1:p[1] + 2]) for p in peaks])]
+
     else:
         # Take the first value if only one peak was found
-        peak = peak[0]
+        peak = peaks[0]
 
     # If the subpixel option was set...
     if subpixel_method is not None:
@@ -102,7 +102,8 @@ def find_displacement(correlation, subpixel_method='gauss_neighbor',
         # If this gives an error, continue without refinement or throw an error
         except ValueError as e:
             if skip_errors:
-                correction = np.zeros((2,))
+                return np.array([np.nan, np.nan])
+                # correction = np.zeros((2,))
             else:
                 raise e
 
@@ -247,6 +248,127 @@ def divide_in_windows(images, window_size):
     return windows, coordinates
 
 
+def divide_in_n_windows(images, window_counts, margins=[0, 0, 0, 0]):
+    """
+    Divide a set of images into windows of a given (equal!) size.
+
+    PARAMETERS:
+        images (np.array): Images [c, y, x].
+        window_counts (tuple): Number of windows in each dimension [j, i].
+        margins (list of ints): Number of pixels to cut off from the edges of the
+            images [y0, y1, x0, x1].
+
+    RETURNS:
+        windows (list of lists): Windows [c, j, i, j_y, i_x].
+        centers (np.array): Subpixel coordinates of the centre of each window [j, i, y/x].
+        locations (np.array): Coordinates of the top-left corner of each window [y, x].
+    """
+
+    # Check whether one or multiple images was supplied
+    if len(images.shape) == 2:
+        # If only one image was supplied, add a dimension
+        images = images[np.newaxis, :, :]
+
+    # Cut off a number of pixels in each direction given by margins
+    images = images[:, margins[0]:(images.shape[1] - margins[1]),
+             margins[2]:(images.shape[2] - margins[3])]
+
+    # Get the cropped image size
+    crop_size = images.shape[1:]
+
+    # Calculate the subpixel window size
+    window_size = np.array(crop_size) / window_counts
+
+    # Get the subpixel window centers
+    centers_y = np.linspace(0.5 * window_size[0], crop_size[0]
+                            - 0.5 * window_size[0], window_counts[0])
+    centers_x = np.linspace(0.5 * window_size[1], crop_size[1]
+                            - 0.5 * window_size[1], window_counts[1])
+
+    # From these, calculate the top-left pixel indices of the windows within
+    # the uncropped image
+    locations = np.array([[[margins[0] + int(y - 0.5 * window_size[0]),
+                            margins[2] + int(x - 0.5 * window_size[1])]
+                           for x in centers_x] for y in centers_y])
+
+    # Divide the images into windows of approximately equal size
+    windows = [[images[:, int(y - 0.5 * window_size[0]):
+                          int(y + 0.5 * window_size[0]),
+                int(x - 0.5 * window_size[1]):
+                int(x + 0.5 * window_size[1])]
+                for x in centers_x] for y in centers_y]
+
+    # Center coordinates
+    centers = np.array([[[margins[0] + y, margins[2] + x] for x in centers_x]
+                        for y in centers_y])
+
+    # Finally, calculate the size of each window
+    sizes = np.array([[window.shape[1:] for window in col] for col in windows])
+
+    return windows, centers, locations, sizes
+
+
+def divide_in_n_windows(images, window_counts, margins=[0, 0, 0, 0]):
+    """
+    Divide a set of images into windows of a given (equal!) size.
+
+    PARAMETERS:
+        images (np.array): Images [c, y, x].
+        window_counts (tuple): Number of windows in each dimension [j, i].
+        margins (list of ints): Number of pixels to cut off from the edges of the
+            images [y0, y1, x0, x1].
+
+    RETURNS:
+        windows (list of lists): Windows [c, j, i, j_y, i_x].
+        centers (np.array): Subpixel coordinates of the centre of each window [j, i, y/x].
+        locations (np.array): Coordinates of the top-left corner of each window [y, x].
+        sizes (np.array): Size of each window [j, i, y/x].
+    """
+
+    # Check whether one or multiple images was supplied
+    if len(images.shape) == 2:
+        # If only one image was supplied, add a dimension
+        images = images[np.newaxis, :, :]
+
+    # Cut off a number of pixels in each direction given by margins
+    images = images[:, margins[0]:(images.shape[1] - margins[1]),
+             margins[2]:(images.shape[2] - margins[3])]
+
+    # Get the cropped image size
+    crop_size = images.shape[1:]
+
+    # Calculate the subpixel window size
+    window_size = np.array(crop_size) / window_counts
+
+    # Get the subpixel window centers
+    centers_y = np.linspace(0.5 * window_size[0], crop_size[0]
+                            - 0.5 * window_size[0], window_counts[0])
+    centers_x = np.linspace(0.5 * window_size[1], crop_size[1]
+                            - 0.5 * window_size[1], window_counts[1])
+
+    # From these, calculate the top-left pixel indices of the windows within
+    # the uncropped image
+    locations = np.array([[[margins[0] + int(y - 0.5 * window_size[0]),
+                            margins[2] + int(x - 0.5 * window_size[1])]
+                           for x in centers_x] for y in centers_y])
+
+    # Divide the images into windows of approximately equal size
+    windows = [[images[:, int(y - 0.5 * window_size[0]):
+                          int(y + 0.5 * window_size[0]),
+                int(x - 0.5 * window_size[1]):
+                int(x + 0.5 * window_size[1])]
+                for x in centers_x] for y in centers_y]
+
+    # Center coordinates
+    centers = np.array([[[margins[0] + y, margins[2] + x] for x in centers_x]
+                        for y in centers_y])
+
+    # Finally, calculate the size of each window
+    sizes = np.array([[window.shape[1:] for window in col] for col in windows])
+
+    return windows, centers, locations, sizes
+
+
 def filter_displacements(displacements, radius_range=None,
                          angle_range=None, template=None):
     """
@@ -320,3 +442,30 @@ def shift_windows():
 
 def merge_windows():
     pass
+
+
+def subtract_background(images, background):
+    """
+    Subtract a background image from a set of images.
+
+    PARAMETERS:
+        images (np.array): Images [c, y, x].
+        background (np.array): Background image [y, x].
+
+    RETURNS:
+        images (np.array): Images with background subtracted [c, y, x].
+    """
+
+    # Check whether the images and background have the same shape
+    if images.shape[1:] != background.shape:
+        # Error
+        raise ValueError(
+            'The images and background do not have the same shape.')
+
+    # Subtract the background from the images
+    images = images - background
+
+    # Set any integer overflowed values to zero
+    images[images > 255] = 0
+
+    return images
