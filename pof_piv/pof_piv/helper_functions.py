@@ -49,8 +49,8 @@ def correlate_image_pair(image0, image1, method='correlate', plot=False):
         fig, ax = plt.subplots(1, 1, figsize=(6, 6))
         ax.imshow(correlation, cmap='gray', interpolation='none',
                   extent=ax_extent)
-        ax.set_xticks(np.arange(ax_ticks[0], ax_ticks[1] + 1, 10))
-        ax.set_yticks(np.arange(ax_ticks[2], ax_ticks[3] + 1, 10))
+        # ax.set_xticks(np.arange(ax_ticks[0], ax_ticks[1] + 1, 10))
+        # ax.set_yticks(np.arange(ax_ticks[2], ax_ticks[3] + 1, 10))
         ax.set_title('Correlation')
         ax.set_xlabel('dy [px]')
         ax.set_ylabel('dx [px]')
