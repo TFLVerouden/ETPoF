@@ -2,26 +2,38 @@ import numpy as np
 from matplotlib import pyplot as plt
 from natsort import natsorted
 import cv2 as cv
+from numba import jit, njit
 from tqdm import tqdm
 from tqdm import trange
 import os
+import warnings
 from scipy.optimize import curve_fit
 from scipy import signal as sig
 
 
 def read_image_directory(directory, prefix=None, image_type='png',
-                         timing=False):
+                         file_range=None, timing=False):
     """
     Read all images in a directory and store them in a 3D array.
 
-    PARAMETERS:
-        directory (str): Path to the directory containing the images.
-        prefix (str): Prefix of the image files to read.
-        image_type (str): Type of the image files to read.
-        timing (bool): Whether to show a progress bar.
+    Parameters
+    ----------
+    directory : str
+        Path to the directory containing the images.
+    prefix : str
+        Prefix of the image files to read.
+    image_type : str
+        Type of the image files to read.
+    file_range : int | tuple
+        Number of images to read or a tuple of start and stop indices.
+        Default: None.
+    timing : bool
+        Whether to show a progress bar.
 
-    RETURNS:
-        images (np.array): array (i, y, x) containing the images.
+    Returns
+    -------
+    images : np.array
+        Array (i, y, x) containing the images.
     """
 
     # Get a list of files in the directory
@@ -38,6 +50,14 @@ def read_image_directory(directory, prefix=None, image_type='png',
     # Sort the files
     files = natsorted(files)
 
+    # If indices is an integer, treat it as the stop point
+    if isinstance(file_range, int):
+        files = files[:(file_range + 1)]
+
+    # If it is a tuple, treat it as start and stop points
+    elif isinstance(file_range, tuple):
+        files = files[(file_range[0]):(file_range[1] + 1)]
+
     # Read the images and store them in a 3D array
     images = np.array([cv.imread(os.path.join(directory, f),
                                  cv.IMREAD_GRAYSCALE) for f in
@@ -47,7 +67,7 @@ def read_image_directory(directory, prefix=None, image_type='png',
     return images
 
 
-def subtract_background(images, background):
+def subtract_background(images, background, timing=False):
     """
     Subtract a background image from a set of images.
 
@@ -66,7 +86,9 @@ def subtract_background(images, background):
                 'The images and background do not have the same shape.')
 
     # Subtract the background from the images
-    images = images - background
+    for c in trange(images.shape[0], desc='Subtracting background',
+                    disable=not timing):
+        images[c] = images[c] - background
 
     # Set any integer overflowed values to zero
     images[images > 255] = 0
@@ -149,11 +171,12 @@ def displacement_1d(correlation, axis=1, max_disp=None, ignore_disp=0,
     return displacement
 
 
-def displacement_2d(correlation, max_disp=None, subpixel_method='gauss_neighbor', plot=False):
+def displacement_2d(correlation, max_disp=None,
+                    subpixel_method='gauss_neighbor', plot=False):
     # Plot the correlation map
     if plot:
         extent = [-correlation.shape[1] // 2, correlation.shape[1] // 2,
-                    -correlation.shape[0] // 2, correlation.shape[0] // 2]
+                  -correlation.shape[0] // 2, correlation.shape[0] // 2]
 
         fig, ax = plt.subplots()
         ax.imshow(correlation, extent=extent)
@@ -166,18 +189,19 @@ def displacement_2d(correlation, max_disp=None, subpixel_method='gauss_neighbor'
         # Return a nan displacement
         return np.array([np.nan, np.nan])
 
-    # Set all values outside of a circle with radius max_displ to zero
+    # Set all values outside a circle with radius max_displ to zero
     if max_disp is not None:
-
         # Set max_disp to the maximum possible displacement if it is too large
-        max_disp = min(max_disp, correlation.shape[0] // 2 - 1, correlation.shape[1] // 2 - 1)
+        max_disp = min(max_disp, correlation.shape[0] // 2 - 1,
+                       correlation.shape[1] // 2 - 1)
 
         # Create a grid of distances from the center
-        x, y = np.meshgrid(np.arange(correlation.shape[1]) - correlation.shape[1] // 2,
-                            np.arange(correlation.shape[0]) - correlation.shape[0] // 2)
+        x, y = np.meshgrid(
+                np.arange(correlation.shape[1]) - correlation.shape[1] // 2,
+                np.arange(correlation.shape[0]) - correlation.shape[0] // 2)
         r = np.sqrt(x ** 2 + y ** 2)
 
-        # Set all values outside of the circle to zero
+        # Set all values outside the circle to zero
         correlation[r > max_disp] = 0
 
     # Get the pixel with maximum brightness
@@ -238,7 +262,8 @@ def shift_displaced_image(images, displacement, axis=1):
 
         # Shift the image
         if axis == 1:
-            images_shifted[1, :, :] = np.roll(images_shifted[1, :, :], -displacement)
+            images_shifted[1, :, :] = np.roll(images_shifted[1, :, :],
+                                              -displacement)
 
             # Zero the pixels that were shifted out of the image
             if displacement > 0:
@@ -258,6 +283,10 @@ def subpixel_correction(array, peak_index, method='gauss_neighbor'):
     # Three-point offset calculation from the lecture
     if method == 'gauss_neighbor':
 
+        # If the array has only equal values, raise error
+        if np.all(array == array[0]):
+            raise ValueError('All values in the array are equal')
+
         # Raise error if numpy encounters an exception
         with np.errstate(divide='raise', invalid='raise'):
 
@@ -266,8 +295,8 @@ def subpixel_correction(array, peak_index, method='gauss_neighbor'):
 
             # Calculate the three-point Gaussian correction
             correction = (0.5 * (np.log(neighbors[0]) - np.log(neighbors[2]))
-                           / ((np.log(neighbors[0])) + np.log(neighbors[2]) -
-                              2 * np.log(neighbors[1])))
+                          / ((np.log(neighbors[0])) + np.log(neighbors[2]) -
+                             2 * np.log(neighbors[1])))
     else:
         raise ValueError('Invalid method')
 
@@ -329,7 +358,8 @@ def plot_flow_field(displacements, window_centers, background=None,
                                      angle_range=highlight_angle_range)
 
     # Get a list of indices that are below the zero-threshold
-    zero_displ = np.nan_to_num(np.linalg.norm(displacements, axis=2)) <= zero_displ_thr
+    zero_displ = np.nan_to_num(
+            np.linalg.norm(displacements, axis=2)) <= zero_displ_thr
 
     # Plot the indices below the threshold as dots
     ax.scatter(window_centers[zero_displ & highlight, 1],
@@ -527,3 +557,418 @@ def filter_displacements(displacements, radius_range=None,
     # MODE 2: Template-based filtering
     else:
         raise NotImplementedError('Template-based filtering is not implemented')
+
+
+def optical_flow(images, slice_ct, window_ct, max_shift_px,
+                 margins=[0, 0, 0, 0], valid_angles=[np.nan, np.nan],
+                 background=None, sum_rows=False, use_guess=False, timing=False,
+                 do_flow_plot=False, do_displ_plot=False, do_print_mean=False):
+    """
+    Perform particle image velocimetry (PIV) on a set of images.
+
+    This function calculates the optical flow field between pairs of images
+    using a three-pass PIV algorithm. The first pass calculates the
+    displacement of the entire image, the second pass calculates the
+    displacement of slices, and the third pass calculates the displacement of
+    windows with subpixel accuracy. The displacements are then filtered based
+    on their magnitude and angle.
+
+    TODO: Maybe remove points that do not match their neighbours
+
+    Parameters
+    ----------
+    images : np.array
+        Images [c, y, x].
+    slice_ct : int
+        Number of slices to divide the image into.
+    window_ct : tuple of int
+        Number of windows in the y and x directions.
+    max_shift_px : int
+        Maximum displacement in pixels.
+    margins : list of int, optional
+        Number of pixels to cut off from each side of the image [top, bottom,
+        left, right]. Default [0, 0, 0, 0].
+    valid_angles : list of float, optional
+        Range of angles to keep [min, max]. Default: [np.nan, np.nan].
+    background : np.array, optional
+        Background image to subtract from the images. Default: None.
+    sum_rows : bool, optional
+        Whether to sum the correlation windows along the rows. Default: False.
+    do_flow_plot : bool, optional
+        Whether to plot the flow field. Default: False.
+    do_displ_plot : bool, optional
+        Whether to plot the displacement vectors. Default: False.
+    do_print_mean : bool, optional
+        Whether to print the mean displacement for each image. Default: False.
+
+    Raises
+    ------
+    ValueError
+        If there are less than two images, the image width is not divisible by
+        the number of windows, or the number of windows is not divisible by the
+        number of slices.
+
+    Returns
+    -------
+    displacements : np.array
+        Displacement vectors [c, j, i, y/x].
+    """
+
+    # Suppress the empty slice warning
+    warnings.filterwarnings(action='ignore', message='Mean of empty slice')
+
+    # Check whether there are two or more images
+    nr_images = images.shape[0]
+    if nr_images < 2:
+        # Error
+        raise ValueError('At least two images are required for PIV.')
+
+    # Check whether the width of the image is divisible by the number of windows
+    if (images.shape[2] - margins[2] - margins[3]) % window_ct[1] != 0:
+        raise ValueError(
+                'Image width is not divisible by the number of windows')
+
+    # Check whether the number of windows is divisible by the number of slices
+    if window_ct[0] % slice_ct != 0:
+        raise ValueError(
+                'Number of windows is not divisible by the number of slices')
+
+    # Subtract background
+    if background is not None:
+        images = subtract_background(images, background=background,
+                                     timing=timing)
+
+    # Cut off a number of pixels in each direction given by margins
+    images_crop = images[:, margins[0]:(images.shape[1] - margins[1]),
+                  margins[2]:(images.shape[2] - margins[3])]
+
+    # In the cropped images, calculate the center of each window
+    window_size = (images_crop[0].shape /
+                   np.array([window_ct[0], window_ct[1]]))
+    window_y = np.arange(window_size[0] / 2, images_crop[0].shape[0],
+                         window_size[0])
+    window_x = np.arange(window_size[1] / 2, images_crop[0].shape[1],
+                         window_size[1]) \
+        if not sum_rows else [images_crop[0].shape[1] / 2]
+    window_centers = np.array([[[y, x] for x in window_x] for y in window_y])
+
+    # Pre-allocate displacements array
+    displacements = np.empty(
+            (nr_images - 1, window_ct[0], window_ct[1], 2), dtype=np.float64) \
+        if not sum_rows else np.empty(
+            (nr_images - 1, window_ct[0], 1, 2), dtype=np.float64)
+
+    # Loop over frames
+    for c in trange(nr_images - 1, desc='Optical flow',
+                    disable=not timing):
+
+        # FIRST PASS
+        # If there is a previous frame...
+        # i -f use_guess and c > 0 and not np.all(np.isnan(displacements[c 1])):
+        if use_guess and c > 0:
+            # Use the mean horizontal displacement of the previous frame
+            hor_disp_init = np.round(
+                    np.nanmean(displacements[c - 1, :, :, 1]).flatten())
+
+            # if np.isnan(hor_disp_init):
+            #     print('nan')
+
+            # If this is a nan, use a frame before this
+            c_prev = 1
+            while np.isnan(hor_disp_init) & (c > c_prev):
+                hor_disp_init = np.round(
+                    np.nanmean(displacements[c - c_prev, :, :, 1]).flatten())
+                c_prev += 1
+
+            # Taking out cases where this gives 0, gives worse results
+
+        # The first frame always uses the entire image to calculate
+        # an initial displacement, also do this when the guess is unusable
+        if c == 0 or (use_guess and np.isnan(hor_disp_init)) or not use_guess:
+            # Calculate the displacement of the entire image
+            corr_init = sig.correlate(images_crop[c + 1], images_crop[c])
+            hor_disp_init = displacement_1d(corr_init, max_disp=max_shift_px)
+
+        # If the correlation map has no peak, move to the next frame
+        if np.isnan(hor_disp_init):
+            continue
+
+        # Otherwise, turn it into an integer
+        hor_disp_init = int(hor_disp_init)
+
+        # If there is movement, shift the second image to match the first
+        images_shift = shift_displaced_image(images_crop[c:(c + 2)],
+                                             hor_disp_init)
+
+        # SECOND PASS
+        # Divide the image into slices
+        slice_set = np.array_split(images_shift, slice_ct, axis=1)
+        # displacements = np.empty((window_ct[0], window_ct[1], 2),
+        #                          dtype=np.float64) if not sum_rows \
+        #     else np.empty((window_ct[0], 1, 2), dtype=np.float64)
+        displacements[c, :, :, :] = np.nan
+
+        # Get the horizontal displacement in the slices
+        for j, slices in enumerate(slice_set):
+
+            # Maximum displacement will be limited further,
+            # with a minimum of 10 for peak detection purposes
+            max_disp = hor_disp_init + 5 if hor_disp_init > 5 else 10
+            # max_disp = max_disp
+
+            # If the initial displacement was larger than 2 px, we will
+            # prevent the next search from flipping back onto the original
+            # peak at 0 movement
+            ignore_only_if_mult = False if hor_disp_init > 2 else True
+
+            # Calculate the displacement in the slice
+            corr_slice = sig.correlate(slices[1], slices[0])
+            hor_disp_slice = displacement_1d(
+                    corr_slice, ignore_disp=-hor_disp_init,
+                    ignore_only_if_mult=ignore_only_if_mult,
+                    max_disp=max_disp, plot=False)
+
+            # If this gives no result, there is no movement in this slice
+            if np.isnan(hor_disp_slice):
+                continue
+
+            # Shift the second slice to match the first
+            slices_shift = shift_displaced_image(slices, hor_disp_slice)
+
+            # THIRD PASS
+            # Divide the slice into windows
+            window_set = np.array_split(slices_shift,
+                                        window_ct[0] // slice_ct,
+                                        axis=1)
+            window_set = [np.array_split(row, window_ct[1], axis=2)
+                          for row in window_set]
+
+            # For each window, calculate the correlation maps
+            corr_set = [[sig.correlate(window[1], window[0]) for window in row]
+                        for row in window_set]
+
+            if sum_rows:
+                # Sum the correlation windows along the rows
+                corr_set = [np.sum(row, axis=0, keepdims=True)
+                            for row in corr_set]
+
+            # Calculate the displacement from the 2d correlation maps
+            disp_set = [[displacement_2d(corr, max_disp=max_disp)
+                         for corr in row] for row in corr_set]
+
+            # Put the displacements in the correct place in the array
+            for j_w, row in enumerate(disp_set):
+                for i, disp in enumerate(row):
+                    displacements[c, j_w + j * window_ct[0] // slice_ct, i, :] \
+                        = disp + [0, hor_disp_slice + hor_disp_init]
+
+        # PLOTTING ACTION
+        # Plot the displacement vectors
+        if do_displ_plot:
+            _, _ = plot_displacements(displacements,
+                                      highlight_radius_range=[1e-20, np.inf],
+                                      highlight_angle_range=valid_angles,
+                                      legend=['Forward angles', 'Rejected'])
+
+        # If the average horizontal displacement is larger than 1 px,
+        # also replace displacements not in the valid angle range
+        if np.abs(np.nanmean(displacements[c, :, :, 1])) > 1:
+            valid_mask = filter_displacements(displacements[c, :, :, :],
+                                              angle_range=valid_angles,
+                                              radius_range=[1, np.inf])
+            displacements[c, ~valid_mask] = np.nan
+
+        # Plot flow field
+        if do_flow_plot:
+            _, _ = plot_flow_field(displacements[c, :, :, :], window_centers, arrow_scale=1,
+                                   arrow_color='white',
+                                   background=images_crop[0])
+
+        # Print mean horizontal velocity
+        if do_print_mean and not np.all(np.isnan(displacements[c, :, :, 1])):
+            print(np.nanmean(displacements[c, :, :, 1]))
+
+    return displacements, window_centers
+
+
+def batch_optical_flow(position_nr, series_nrs, slice_ct, window_ct,
+                       max_shift_px, margins, file_range=None,
+                       valid_angles=[np.pi / 4, 3 * np.pi / 4],
+                       sum_rows=True, use_guess=True, timing=True,
+                       do_mean_plot=True):
+    """
+    Perform optical flow on a batch of measurement series at a given position.
+
+    Parameters
+    ----------
+    position_nr : int
+        Position number.
+    series_nrs : list of int
+        Series numbers.
+    slice_ct : int
+        Number of slices to divide the image into.
+    window_ct : tuple of int
+        Number of windows in the y and x directions.
+    max_shift_px : int
+        Maximum displacement in pixels.
+    margins : list of int
+        Number of pixels to cut off from each side of the image [top, bottom,
+        left, right].
+    file_range : int | tuple
+        Number of images to read or a tuple of start and stop indices.
+        Default: None.
+    valid_angles : list of float, optional
+        Range of angles to keep [min, max]. Default: [np.pi / 4, 3 * np.pi / 4].
+    sum_rows : bool, optional
+        Whether to sum the correlation windows along the rows. Default: True.
+    use_guess : bool, optional
+        Whether to use the mean horizontal displacement of the previous frame.
+        Default: True.
+    timing : bool, optional
+        Whether to show a progress bar. Default: True.
+    do_mean_plot : bool, optional
+        Whether to plot the mean displacement of each series. Default: True.
+
+    Returns
+    -------
+    None
+    """
+
+    for series_nr in series_nrs:
+
+        # Announce start
+        print(f'Processing pos{position_nr}-{series_nr}')
+        print('-----------------')
+
+        # Load background
+        background = cv.imread(f'data/backgrounds/pos{position_nr}'
+                               f'-{series_nr}.tif', cv.IMREAD_GRAYSCALE)
+
+        # Load images
+        images = read_image_directory(f'data/pos{position_nr}-{series_nr}',
+                                      image_type='tif', timing=True,
+                                      file_range=file_range)
+
+        # Perform optical flow
+        displ, window_cent = optical_flow(
+                images, slice_ct, window_ct, max_shift_px, margins,
+                valid_angles=valid_angles, background=background,
+                sum_rows=sum_rows, use_guess=use_guess, timing=timing)
+
+        # Calculate mean displacement
+        displ_mean = mean_displacement(displ, comp='x', av_dir='all')
+
+        # Save the displacement, mean displacement, and window centers
+        np.save(f'processed/pos{position_nr}-{series_nr}_displ.npy',
+                displ)
+        np.save(f'processed/pos{position_nr}-{series_nr}_displ_av.npy',
+                displ_mean)
+        np.save(f'processed/pos{position_nr}-{series_nr}_window_pos.npy',
+                window_cent)
+
+        # Plot the mean displacement
+        if do_mean_plot:
+            fig, ax = plt.subplots()
+            ax.plot(displ_mean.flatten())
+            ax.set_xlabel('Frame')
+            ax.set_ylabel('Mean displacement [px]')
+            ax.set_ylim([-10, 50])
+            plt.show()
+
+        # Delete the images and displacements to save memory
+        del images, background, displ, displ_mean, window_cent
+
+
+def mean_displacement(displacements, comp='norm', av_dir='ij'):
+    """
+    Calculate the mean displacement of the flow field.
+
+    To calculate horizontal flow profiles, set comp='x' and av_dir='i'.
+
+    Parameters
+    ----------
+    displacements : np.array
+        Displacement vectors [c, j, i, y/x].
+    comp : str, optional
+        Component of the displacement to calculate. Default: 'norm'.
+    av_dir : str, optional
+        Direction in which to calculate the mean. Default: 'all'.
+
+    Returns
+    -------
+
+    """
+
+    # If displacements is 3D, add a dimension
+    if displacements.ndim == 3:
+        displacements = displacements[np.newaxis, :, :, :]
+
+    # Check whether the component and direction are valid
+    if comp not in ['norm', 'x', 'y', 'xy']:
+        raise ValueError('Invalid component designation')
+    if av_dir not in ['all', 'i', 'j']:
+        raise ValueError('Invalid direction designation')
+
+    # Set dimensions of the output array
+    xy_length = 1 if comp in ['norm', 'x', 'y'] else 2
+    j_length = displacements.shape[1] if av_dir == 'i' else 1
+    i_length = displacements.shape[2] if av_dir == 'j' else 1
+
+    # Pre-allocate array of mean displacements
+    mean_displacements = np.empty((displacements.shape[0],
+                                   j_length, i_length, xy_length))
+
+    # Loop through frames
+    for c in range(len(displacements)):
+        # If all entries are nan, the mean displacement is nan
+        if np.all(np.isnan(displacements[c, :, :, :])):
+            mean_displacements[c, :, :, :] = np.nan
+            continue
+
+        # If the magnitude is requested, first calculate the norm
+        if comp == 'norm':
+            entries = np.linalg.norm(displacements[c, :, :, :], axis=2)
+        elif comp == 'x':
+            entries = displacements[c, :, :, 1]
+        elif comp == 'y':
+            entries = displacements[c, :, :, 0]
+        elif comp == 'xy':
+            entries = displacements[c, :, :, :]
+
+        # Check in which direction the mean should be calculated
+        if av_dir == 'all':
+
+            # If we want a scalar output, take the mean, otherwise
+            # separately in the x and y directions
+            if comp in ['norm', 'x', 'y']:
+                mean_displacements[c, 0, 0, :] = np.nanmean(entries)
+            else:
+                entries = displacements[c, :, :, :]
+                mean_displacements[c, 0, 0, :] = (
+                    np.nanmean(entries, axis=(0, 1)))
+
+        elif av_dir == 'j':
+
+            for i in range(i_length):
+                # If we want a scalar output, take the mean, otherwise
+                # separately in the x and y directions
+                if comp in ['norm', 'x', 'y']:
+                    mean_displacements[c, 0, i, :] = np.nanmean(entries[:, i])
+                else:
+                    entries = displacements[c, :, i, :]
+                    mean_displacements[c, 0, i, :] = (
+                        np.nanmean(entries, axis=0))
+
+        elif av_dir == 'i':
+
+            for j in range(j_length):
+                # If we want a scalar output, take the mean, otherwise
+                # separately in the x and y directions
+                if comp in ['norm', 'x', 'y']:
+                    mean_displacements[c, j, 0, :] = np.nanmean(entries[j, :])
+                else:
+                    entries = displacements[c, j, :, :]
+                    mean_displacements[c, j, 0, :] = (
+                        np.nanmean(entries, axis=0))
+
+    return mean_displacements
