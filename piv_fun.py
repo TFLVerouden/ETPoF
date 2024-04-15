@@ -122,8 +122,8 @@ def displacement_1d(correlation, axis=1, max_disp=None, ignore_disp=0,
     # If subpixel resolution is requested, calculate it
     if subpixel_method is not None:
         # Calculate the subpixel displacement
-        correction = subpixel(correlation_slice, peak,
-                              method=subpixel_method)
+        correction = subpixel_correction(correlation_slice, peak,
+                                         method=subpixel_method)
 
         # Add the subpixel displacement to the integer displacement
         peak = peak + correction
@@ -204,17 +204,20 @@ def displacement_2d(correlation, max_disp=None, subpixel_method='gauss_neighbor'
 
             # Calculate the subpixel displacement
             correction = np.array([
-                subpixel(x_slice, peak[1], method=subpixel_method),
-                subpixel(y_slice, peak[0], method=subpixel_method)])
+                subpixel_correction(x_slice, peak[1], method=subpixel_method),
+                subpixel_correction(y_slice, peak[0], method=subpixel_method)])
+
+            # If the displacement is within the floating point error...
+            if np.abs(np.linalg.norm(correction)) < 1e-6:
+                # Return a nan displacement
+                return np.array([np.nan, np.nan])
 
             # Add the subpixel displacement to the integer displacement
             peak = peak + correction
 
+        # If the subpixel calculation failed, return a nan displacement
         except (ValueError, FloatingPointError):
-            # If the subpixel calculation failed, return a nan displacement
             return np.array([np.nan, np.nan])
-
-        # Reject values within the floating point error
 
         # Add the subpixel displacement to the integer displacement
         peak = peak + correction
@@ -227,25 +230,28 @@ def displacement_2d(correlation, max_disp=None, subpixel_method='gauss_neighbor'
 
 
 def shift_displaced_image(images, displacement, axis=1):
+    # Make a copy of the images_shifted
+    images_shifted = np.copy(images)
+
     # If the displacement is non-zero...
     if displacement != 0:
 
         # Shift the image
         if axis == 1:
-            images[1, :, :] = np.roll(images[1, :, :], -displacement)
+            images_shifted[1, :, :] = np.roll(images_shifted[1, :, :], -displacement)
 
             # Zero the pixels that were shifted out of the image
             if displacement > 0:
-                images[1, :, -displacement:] = 0
+                images_shifted[1, :, -displacement:] = 0
             else:
-                images[1, :, :-displacement] = 0
+                images_shifted[1, :, :-displacement] = 0
         else:
             raise NotImplementedError('Only axis=1 is implemented')
 
-    return images
+    return images_shifted
 
 
-def subpixel(array, peak_index, method='gauss_neighbor'):
+def subpixel_correction(array, peak_index, method='gauss_neighbor'):
     """
     """
 
@@ -262,27 +268,6 @@ def subpixel(array, peak_index, method='gauss_neighbor'):
             correction = (0.5 * (np.log(neighbors[0]) - np.log(neighbors[2]))
                            / ((np.log(neighbors[0])) + np.log(neighbors[2]) -
                               2 * np.log(neighbors[1])))
-
-            # # If any of the neighbours is zero, throw an error
-            # if np.any(neighbors == 0):
-            #     raise ValueError('Cannot calculate subpixel correction: one of the'\
-            #                      ' neighbouring pixels is zero.')
-            #
-            # # Try if the denominator can be calculated
-            # try:
-            #     denom = ()
-            #
-            #
-            # except FloatingPointError:
-            #     print(neighbors)
-            #     raise ValueError('Cannot calculate subpixel correction: one of the'\
-            #                      ' neighbouring pixels is zero.')
-            # try:
-            #
-            # except FloatingPointError:
-            #     print(((np.log(neighbors[0])) + np.log(neighbors[2])
-            #                - 2 * np.log(neighbors[1])))
-
     else:
         raise ValueError('Invalid method')
 
