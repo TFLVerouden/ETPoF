@@ -304,11 +304,13 @@ def subpixel_correction(array, peak_index, method='gauss_neighbor'):
 
 
 def plot_flow_field(displacements, window_centers, background=None,
-                    arrow_color='k', arrow_scale=1, zero_displ_thr=0,
+                    margins=np.array([0, 0, 0, 0]), arrow_color='k',
+                    arrow_scale=1, center_arrows=True,
+                    zero_displ_thr=0, axis_labels=['x', 'y'],
                     highlight_radius_range=[np.nan, np.nan],
                     highlight_angle_range=[np.nan, np.nan],
-                    highlight_color='b', calib_dist=None, units=None,
-                    title='Flow field', timing=False):
+                    highlight_color='b', calib_dist=None, right_axis_scale = None,
+                    units='px', title='Flow field', time_stamp=None, timing=False):
     """
     Plot the flow field with displacements as arrows.
 
@@ -339,18 +341,36 @@ def plot_flow_field(displacements, window_centers, background=None,
     # Plot all displacement vectors at the center of each window
     fig, ax = plt.subplots()
 
-    # If a background image is supplied, add it to the plot
+    # Set the image extent and center the windows if a background is supplied
     if background is not None:
-        ax.imshow(background, cmap='gray')
+        extent = np.array([-background.shape[1] / 2, background.shape[1] / 2,
+                           -background.shape[0] / 2, background.shape[0] / 2])
+        window_centers = window_centers - np.array([background.shape[0] / 2,
+                                                    background.shape[1] / 2])
+
+    # If margins are specified, shift the window positions and image extent
+    if np.any(margins):
+        window_centers = window_centers + np.array([margins[0], margins[2]])
+
+        if background is not None:
+
+            extent = extent - np.array([margins[2], margins[2],
+                                        margins[0], margins[0]])
 
     # If a calibration distance was specified, calibrate all values
     if calib_dist is not None:
-        displacements = displacements * calib_dist
-        window_centers = window_centers * calib_dist
+        displacements = displacements * calib_dist / arrow_scale
+        window_centers = window_centers * calib_dist / arrow_scale
+        extent = extent * calib_dist / arrow_scale
+        zero_displ_thr = zero_displ_thr * calib_dist / arrow_scale
+
+    # If a background image is supplied, add it to the plot
+    if background is not None:
+        ax.imshow(background, cmap='gray', extent=extent)
 
     # Show a grid with the outline of each window and an arrow in the centre
     # indicating the displacement
-    arrow_param = calib_dist if calib_dist is not None else 1
+    arrow_param = calib_dist / arrow_scale if calib_dist is not None else 1
 
     # Get a list of indices that should be coloured
     highlight = filter_displacements(displacements,
@@ -376,15 +396,19 @@ def plot_flow_field(displacements, window_centers, background=None,
 
             # If the displacement is above the zero-threshold, plot an arrow
             if np.linalg.norm(displacements[j, i]) > zero_displ_thr:
+
                 # If the displacement should be highlighted, set the color
                 color = highlight_color if highlight[j, i] else arrow_color
 
-                # Calculate the start and end of the arrow
-                arrow_start = np.array(
-                        [window_centers[j, i][0] -
-                         arrow_scale * 0.5 * displacements[j, i][0],
-                         window_centers[j, i][1] -
-                         arrow_scale * 0.5 * displacements[j, i][1]])
+                # Calculate the start of the arrow
+                if center_arrows:
+                    arrow_start = np.array(
+                            [window_centers[j, i][0] -
+                             arrow_scale * 0.5 * displacements[j, i][0],
+                             window_centers[j, i][1] -
+                             arrow_scale * 0.5 * displacements[j, i][1]])
+                else:
+                    arrow_start = window_centers[j, i]
 
                 # Plot the arrow
                 ax.arrow(arrow_start[1], arrow_start[0],
@@ -398,23 +422,24 @@ def plot_flow_field(displacements, window_centers, background=None,
     # Aspect ratio should be 1
     ax.set_aspect('equal')
 
-    # Set limits
-    # ax.set_xlim([0, np.max(window_centers[:, :, 1]) + window_size[1] / 2])
-    # ax.set_ylim([np.max(window_centers[:, :, 0] + window_size[0] / 2), 0])
+    # Add the time stamp to the top left of the plot
+    if time_stamp is not None:
+        ax.text(0.02, 0.97, time_stamp, ha='left', va='top',
+                transform=ax.transAxes, fontsize=12, color=arrow_color)
 
     # If a calibration distance was specified, add units to the labels
-    if calib_dist is not None:
-        ax.set_xlabel(f'x [{units}]')
-        ax.set_ylabel(f'y [{units}]')
-    else:
-        ax.set_xlabel('x [px]')
-        ax.set_ylabel('y [px]')
+    if calib_dist is not None and units == 'px':
+        raise ValueError('Units must be specified if a calibration distance '
+                         'is given.')
+    ax.set_xlabel(f'{axis_labels[0]} ({units})')
+    ax.set_ylabel(f'{axis_labels[1]} ({units})')
 
     # If an arrow scale was specified, add it to the title
-    if arrow_scale != 1:
+    if arrow_scale != 1 and calib_dist is not None and title is not None:
         title = title + f' (arrows scaled ×{arrow_scale})'
     ax.set_title(title)
-    plt.show()
+    # plt.show()
+
 
     return fig, ax
 
@@ -677,7 +702,8 @@ def optical_flow(images, slice_ct, window_ct, max_shift_px,
             c_prev = 1
             while np.isnan(hor_disp_init) & (c > c_prev):
                 hor_disp_init = np.round(
-                    np.nanmean(displacements[c - c_prev, :, :, 1]).flatten())
+                        np.nanmean(
+                                displacements[c - c_prev, :, :, 1]).flatten())
                 c_prev += 1
 
             # Taking out cases where this gives 0, gives worse results
@@ -780,7 +806,8 @@ def optical_flow(images, slice_ct, window_ct, max_shift_px,
 
         # Plot flow field
         if do_flow_plot:
-            _, _ = plot_flow_field(displacements[c, :, :, :], window_centers, arrow_scale=1,
+            _, _ = plot_flow_field(displacements[c, :, :, :], window_centers,
+                                   arrow_scale=1,
                                    arrow_color='white',
                                    background=images_crop[0])
 
