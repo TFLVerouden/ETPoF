@@ -160,8 +160,8 @@ def displacement_1d(correlation, axis=1, max_disp=None, ignore_disp=0,
 
         x = np.arange(correlation.shape[1]) - correlation.shape[1] // 2
 
-        fig, ax = plt.subplots()
-        ax.plot(x, correlation[correlation.shape[0] // 2, :], 'o-')
+        fig, ax = plt.subplots(figsize=(6, 3))
+        ax.plot(x, correlation[correlation.shape[0] // 2, :], '-')
         ax.axvline(displacement, color='r')
         ax.set_xlim(-max_disp, max_disp)
         ax.set_xlabel('Displacement [px]')
@@ -791,7 +791,7 @@ def optical_flow(images, slice_ct, window_ct, max_shift_px,
         # PLOTTING ACTION
         # Plot the displacement vectors
         if do_displ_plot:
-            _, _ = plot_displacements(displacements,
+            _, _ = plot_displacements(displacements[c, :, :, :],
                                       highlight_radius_range=[1e-20, np.inf],
                                       highlight_angle_range=valid_angles,
                                       legend=['Forward angles', 'Rejected'])
@@ -807,7 +807,7 @@ def optical_flow(images, slice_ct, window_ct, max_shift_px,
         # Plot flow field
         if do_flow_plot:
             _, _ = plot_flow_field(displacements[c, :, :, :], window_centers,
-                                   arrow_scale=1,
+                                   arrow_scale=0.5,
                                    arrow_color='white',
                                    background=images_crop[0])
 
